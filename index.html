@@ -1034,28 +1034,28 @@
         const lvl = upgradeLv[id] || 0;
         return Math.floor(u.base * Math.pow(1.55, lvl));
       }
-      
+
       function applyUpgrades() {
-        for (const u of upgrades) {
-          u.apply(upgradeLv[u.id] || 0);
+       for (const u of upgrades) {
+         u.apply(upgradeLv[u.id] || 0);
+      }
+
+       if (typeof player !== "undefined") {
+         player.speed = persistent.up.speed;
+         player.maxHp = persistent.up.maxHp;
+
+       if (player.hp > player.maxHp) {
+         player.hp = player.maxHp;
         }
+      }
 
-        if (typeof player !== "undefined") {
-          player.speed = persistent.up.speed;
-          player.maxHp = persistent.up.maxHp;
-
-          if (player.hp > player.maxHp) {
-            player.hp = player.maxHp;
-          }
-       }
-   
        if (typeof emp !== "undefined") {
-         emp.cd = persistent.up.empCd;
-         emp.radius = persistent.up.empRadius;
-       }
+        emp.cd = persistent.up.empCd;
+        emp.radius = persistent.up.empRadius;
+      }
 
        STORE.set(PKEY, persistent, SECRET);
-      STORE.set(PKEY + "_uplv", upgradeLv, SECRET);
+       STORE.set(PKEY + "_uplv", upgradeLv, SECRET);
      }
 
             // ---------------------------
@@ -1104,6 +1104,16 @@
         }).join("");
       }
 
+      let shopPreviousPaused = false;
+
+     function openUpgradeShop() {
+       shopPreviousPaused = paused;
+       paused = true;
+
+       renderUpgradeShop();
+       el.shopOverlay.style.display = "grid";
+     }
+      
       function openUpgradeShop() {
         shopPreviousPaused = paused;
         paused = true;
@@ -1433,20 +1443,22 @@
         shootAtPointer(e);
       });
 
+     }
+     
       function togglePause() {
         if (gameOver) return;
 
         if (el.shopOverlay.style.display === "grid") {
-        closeUpgradeShop();
-        return;
-      }
+         closeUpgradeShop();
+         return;
+        }
 
       paused = !paused;
       toast(paused ? "Paused" : "Resumed");
-    }
+     }
 
       // ---------------------------
-      // Boss shooting (shards as ammo)
+      // Boss shooting (AMMO)
       // ---------------------------
       let shotGlow = 0;
 
