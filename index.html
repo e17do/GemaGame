@@ -474,11 +474,8 @@
     </div>
   </div>
 
-  <aside class="mission" aria-hidden="true">
+    <aside class="mission" aria-hidden="true">
     <h2>Mission</h2>
-      <div class="utilityBar">
-    <button class="btn primary" id="shopBtn">UPGRADE SHOP</button>
-  </div>
     <p id="msText">Collect 5 pellets.</p>
     <div class="track">
       <div class="miniBar"><div id="msFill" class="miniFill"></div></div>
@@ -486,6 +483,10 @@
     </div>
     <p id="dailyHint" style="margin:10px 0 0; color:var(--muted)">Daily: —</p>
   </aside>
+
+  <div class="utilityBar">
+    <button class="btn primary" id="shopBtn">UPGRADE SHOP</button>
+  </div>
   <div class="shopOverlay" id="shopOverlay" role="dialog" aria-modal="true" aria-labelledby="shopTitle">
     <div class="shopModal">
 
@@ -598,6 +599,7 @@
         shopCloseBottom: document.getElementById("shopCloseBottom"),
         shopGrid: document.getElementById("shopGrid"),
         shopShards: document.getElementById("shopShards"),
+      };
 
       const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
       const lerp = (a, b, t) => a + (b - a) * t;
@@ -1034,10 +1036,31 @@
         return Math.floor(u.base * Math.pow(1.55, lvl));
       }
       function applyUpgrades() {
-        for (const u of upgrades) u.apply(upgradeLv[u.id] || 0);
-        STORE.set(PKEY, persistent, SECRET);
-        STORE.set(PKEY + "_uplv", upgradeLv, SECRET);
-      }
+  for (const u of upgrades) {
+    u.apply(upgradeLv[u.id] || 0);
+  }
+
+  // Sinkronkan upgrade ke runtime player/EMP
+  // jika game sudah selesai melakukan inisialisasi.
+  if (typeof player !== "undefined") {
+    player.speed = persistent.up.speed;
+    player.maxHp = persistent.up.maxHp;
+
+    // Jika max HP naik saat sedang bermain,
+    // pertahankan HP saat ini dan tambahkan kapasitas baru.
+    if (player.hp > player.maxHp) {
+      player.hp = player.maxHp;
+    }
+  }
+
+  if (typeof emp !== "undefined") {
+    emp.cd = persistent.up.empCd;
+    emp.radius = persistent.up.empRadius;
+  }
+
+  STORE.set(PKEY, persistent, SECRET);
+  STORE.set(PKEY + "_uplv", upgradeLv, SECRET);
+}
 
             // ---------------------------
       // Upgrade Shop UI
@@ -1086,10 +1109,6 @@
       }
 
       function openUpgradeShop() {
-        if (gameOver) {
-          // Shop is still allowed after death.
-        }
-
         paused = true;
         renderUpgradeShop();
         el.shopOverlay.style.display = "grid";
@@ -1423,9 +1442,9 @@
         closeUpgradeShop();
         return;
       }
-   
-        paused = !paused;
-        toast(paused ? "Paused" : "Resumed");
+
+       paused = !paused;
+       toast(paused ? "Paused" : "Resumed");
       }
 
       // ---------------------------
@@ -2346,6 +2365,9 @@
 
         applyUpgrades();
         player.maxHp = persistent.up.maxHp;
+
+        emp.cd = persistent.up.empCd;
+        emp.radius = persistent.up.empRadius;
         player.hp = player.maxHp;
         player.speed = persistent.up.speed;
         player.r = 8;
