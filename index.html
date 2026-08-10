@@ -517,7 +517,7 @@
       <div class="modalHeader">
         <div>
           <h3 id="ovTitle">SIGNAL LOST</h3>
-          <p id="ovDesc">Recalibrate or revive. Klik untuk menembak saat Boss keluar (mengurangi shards).</p>
+          <p id="ovDesc">Recalibrate or revive. Klik untuk menembak saat Boss keluar (menggunakan AMMO).</p>
         </div>
         <div class="badge">EARNED <b id="ovEarn">0</b> SHARDS</div>
       </div>
@@ -548,7 +548,7 @@
         <span class="kbd">SPACE</span> ping radar ·
         <span class="kbd">F</span> detonate EMP ·
         <span class="kbd">P</span> pause<br>
-        Mobile: drag to move, tap to ping. Saat Boss keluar: tap untuk menembak (pakai shards).
+        Mobile: drag to move, tap to ping. Saat Boss keluar: tap untuk menembak (pakai AMMO).
       </p>
       <div class="row">
         <button class="btn primary" id="startBtn">Start</button>
@@ -1040,7 +1040,7 @@
           u.apply(upgradeLv[u.id] || 0);
         }
 
-       if (typeof player !== "undefined") {
+        if (typeof player !== "undefined") {
           player.speed = persistent.up.speed;
           player.maxHp = persistent.up.maxHp;
 
@@ -1049,13 +1049,13 @@
           }
        }
 
-       if (typeof emp !== "undefined") {
-         emp.cd = persistent.up.empCd;
-         emp.radius = persistent.up.empRadius;
-       }
+        if (typeof emp !== "undefined") {
+          emp.cd = persistent.up.empCd;
+          emp.radius = persistent.up.empRadius;
+        }
 
-       STORE.set(PKEY, persistent, SECRET);
-       STORE.set(PKEY + "_uplv", upgradeLv, SECRET);
+        STORE.set(PKEY, persistent, SECRET);
+        STORE.set(PKEY + "_uplv", upgradeLv, SECRET);
      }
 
             // ---------------------------
