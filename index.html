@@ -1035,32 +1035,29 @@
         const lvl = upgradeLv[id] || 0;
         return Math.floor(u.base * Math.pow(1.55, lvl));
       }
+      
       function applyUpgrades() {
-  for (const u of upgrades) {
-    u.apply(upgradeLv[u.id] || 0);
-  }
+        for (const u of upgrades) {
+          u.apply(upgradeLv[u.id] || 0);
+        }
 
-  // Sinkronkan upgrade ke runtime player/EMP
-  // jika game sudah selesai melakukan inisialisasi.
-  if (typeof player !== "undefined") {
-    player.speed = persistent.up.speed;
-    player.maxHp = persistent.up.maxHp;
+        if (typeof player !== "undefined") {
+          player.speed = persistent.up.speed;
+          player.maxHp = persistent.up.maxHp;
 
-    // Jika max HP naik saat sedang bermain,
-    // pertahankan HP saat ini dan tambahkan kapasitas baru.
-    if (player.hp > player.maxHp) {
-      player.hp = player.maxHp;
-    }
-  }
+          if (player.hp > player.maxHp) {
+            player.hp = player.maxHp;
+          }
+       }
+   
+       if (typeof emp !== "undefined") {
+         emp.cd = persistent.up.empCd;
+         emp.radius = persistent.up.empRadius;
+       }
 
-  if (typeof emp !== "undefined") {
-    emp.cd = persistent.up.empCd;
-    emp.radius = persistent.up.empRadius;
-  }
-
-  STORE.set(PKEY, persistent, SECRET);
-  STORE.set(PKEY + "_uplv", upgradeLv, SECRET);
-}
+       STORE.set(PKEY, persistent, SECRET);
+      STORE.set(PKEY + "_uplv", upgradeLv, SECRET);
+     }
 
             // ---------------------------
       // Upgrade Shop UI
