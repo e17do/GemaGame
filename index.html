@@ -1036,23 +1036,23 @@
       }
 
       function applyUpgrades() {
-       for (const u of upgrades) {
-         u.apply(upgradeLv[u.id] || 0);
-      }
+        for (const u of upgrades) {
+          u.apply(upgradeLv[u.id] || 0);
+        }
 
        if (typeof player !== "undefined") {
-         player.speed = persistent.up.speed;
-         player.maxHp = persistent.up.maxHp;
+          player.speed = persistent.up.speed;
+          player.maxHp = persistent.up.maxHp;
 
-       if (player.hp > player.maxHp) {
-         player.hp = player.maxHp;
-        }
-      }
+          if (player.hp > player.maxHp) {
+            player.hp = player.maxHp;
+          }
+       }
 
        if (typeof emp !== "undefined") {
-        emp.cd = persistent.up.empCd;
-        emp.radius = persistent.up.empRadius;
-      }
+         emp.cd = persistent.up.empCd;
+         emp.radius = persistent.up.empRadius;
+       }
 
        STORE.set(PKEY, persistent, SECRET);
        STORE.set(PKEY + "_uplv", upgradeLv, SECRET);
@@ -1105,14 +1105,6 @@
       }
 
       let shopPreviousPaused = false;
-
-     function openUpgradeShop() {
-       shopPreviousPaused = paused;
-       paused = true;
-
-       renderUpgradeShop();
-       el.shopOverlay.style.display = "grid";
-     }
       
       function openUpgradeShop() {
         shopPreviousPaused = paused;
@@ -1443,19 +1435,18 @@
         shootAtPointer(e);
       });
 
-     }
      
       function togglePause() {
         if (gameOver) return;
 
         if (el.shopOverlay.style.display === "grid") {
-         closeUpgradeShop();
-         return;
+          closeUpgradeShop();
+          return;
         }
 
-      paused = !paused;
-      toast(paused ? "Paused" : "Resumed");
-     }
+        paused = !paused;
+        toast(paused ? "Paused" : "Resumed");
+      }
 
       // ---------------------------
       // Boss shooting (AMMO)
