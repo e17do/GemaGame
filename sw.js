@@ -1,11 +1,11 @@
-const CACHE_NAME = 'gema-cache-v1';
+const CACHE_NAME = 'gema-cache-v2';
+
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/icon-512.png',
-  '/icon-192.png',
-  // tambahkan file lain yang perlu di-cache
+  './',
+  './index.html',
+  './manifest.json',
+  './icon-512.png',
+  './icon-192.png'
 ];
 
 self.addEventListener('install', event => {
