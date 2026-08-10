@@ -919,7 +919,6 @@
 
       let ammo = 0;
       const maxAmmo = 24;
-      const ammoCost = 3;
 
       function bossAlive() {
         return enemies.some(e => e.type === "BOSS");
@@ -1450,9 +1449,16 @@
       let shotGlow = 0;
 
       function shootAtPointer(e) {
-        if (persistent.shards < ammoCost) {
-          toast("Shards habis! Ambil bintang untuk isi ammo.");
-          sfx({ f: 120, t: "square", d: 0.08, v: 0.05, bend: -30, noise: 0.10 });
+        if (ammo <= 0) {
+          toast("AMMO habis! Ambil star untuk mengisi ammo.");
+          sfx({
+            f: 120,
+            t: "square",
+            d: 0.08,
+            v: 0.05,
+            bend: -30,
+            noise: 0.10
+          });
           HAPTICS.pattern("miss");
           return;
         }
@@ -1461,10 +1467,8 @@
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
 
-        persistent.shards -= ammoCost;
         ammo = clamp(ammo - 1, 0, maxAmmo);
-        STORE.set(PKEY, persistent, SECRET);
-
+        
         shotGlow = 1;
         camShake(6);
         freeze(25);
