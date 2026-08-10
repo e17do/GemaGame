@@ -1105,7 +1105,9 @@
       }
 
       function openUpgradeShop() {
+        shopPreviousPaused = paused;
         paused = true;
+
         renderUpgradeShop();
         el.shopOverlay.style.display = "grid";
       }
@@ -1114,7 +1116,7 @@
         el.shopOverlay.style.display = "none";
 
         if (!gameOver) {
-          paused = false;
+          paused = shopPreviousPaused;
         }
 
         updateUI();
@@ -1489,7 +1491,7 @@
             en.hp -= dmg;
 
             burst(en.x, en.y, "rgba(255,43,110,1)", 14, 0.85);
-            addFloating(`-${ammoCost} shards`, x, y - 10, "#00F6FF");
+            addFloating("-1 AMMO", x, y - 10, "#00F6FF");
             addFloating(`HIT ${dmg}`, en.x, en.y - en.r - 10, "#FF2B6E");
 
             triggerHitStopKill();
@@ -2440,7 +2442,7 @@
     // Registrasi Service Worker setelah halaman load
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
+        navigator.serviceWorker.register('./sw.js')
           .then(() => console.log('Service Worker registered'))
           .catch(err => console.error('Service Worker registration failed:', err));
       });
