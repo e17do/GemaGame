@@ -309,10 +309,148 @@
     }
     .row{ display:flex; gap:10px; flex-wrap:wrap; margin-top:14px }
 
+    /* =========================
+   Upgrade Shop
+   ========================= */
+.shopOverlay{
+  position:fixed;
+  inset:0;
+  display:none;
+  place-items:center;
+  z-index:75;
+  background:rgba(0,0,0,.72);
+  backdrop-filter:blur(12px);
+}
+
+.shopModal{
+  width:min(760px, calc(100vw - 24px));
+  max-height:min(720px, calc(100vh - 24px));
+  overflow:auto;
+  border-radius:22px;
+  border:1px solid rgba(0,246,255,.20);
+  background:
+    radial-gradient(700px 300px at 20% 0%, rgba(0,246,255,.10), transparent 60%),
+    linear-gradient(180deg, rgba(3,18,20,.92), rgba(2,10,12,.88));
+  box-shadow:0 30px 120px rgba(0,0,0,.75);
+}
+
+.shopHeader{
+  padding:16px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+
+.shopHeader h3{
+  margin:0;
+  color:var(--cyan);
+  font-size:22px;
+  letter-spacing:.16em;
+  text-transform:uppercase;
+}
+
+.shopBalance{
+  font-family:"JetBrains Mono",monospace;
+  color:var(--amber);
+  font-weight:700;
+  letter-spacing:.08em;
+}
+
+.shopGrid{
+  padding:14px;
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0,1fr));
+  gap:10px;
+}
+
+.upgradeCard{
+  border:1px solid rgba(255,255,255,.09);
+  border-radius:16px;
+  padding:14px;
+  background:rgba(0,0,0,.22);
+}
+
+.upgradeTop{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  align-items:flex-start;
+}
+
+.upgradeName{
+  color:var(--ink);
+  font-weight:700;
+  letter-spacing:.08em;
+}
+
+.upgradeLevel{
+  color:var(--cyan);
+  font-family:"JetBrains Mono",monospace;
+  font-size:11px;
+}
+
+.upgradeDesc{
+  margin:8px 0;
+  color:var(--muted);
+  font-family:"JetBrains Mono",monospace;
+  font-size:10px;
+  line-height:1.5;
+}
+
+.upgradeCost{
+  color:var(--amber);
+  font-family:"JetBrains Mono",monospace;
+  font-size:11px;
+  margin-bottom:8px;
+}
+
+.upgradeCard .btn{
+  width:100%;
+}
+
+.upgradeCard .btn:disabled{
+  opacity:.38;
+  cursor:not-allowed;
+  transform:none;
+}
+
+.shopFooter{
+  padding:0 14px 14px;
+  display:flex;
+  justify-content:flex-end;
+}
+
+@media (max-width:620px){
+  .shopGrid{
+    grid-template-columns:1fr;
+  }
+}
+
     @media (max-width:740px){
       .mission{ top:auto; bottom:74px; left:12px; right:12px; width:auto }
       .panel{ width:min(720px, calc(100vw - 24px)) }
     }
+    .utilityBar{
+  position:fixed;
+  left:12px;
+  bottom:12px;
+  z-index:35;
+  pointer-events:auto;
+}
+
+.utilityBar .btn{
+  font-size:11px;
+  padding:9px 12px;
+}
+
+@media (max-width:740px){
+  .utilityBar{
+    left:12px;
+    bottom:12px;
+  }
+}
   </style>
 </head>
 
@@ -338,6 +476,9 @@
 
   <aside class="mission" aria-hidden="true">
     <h2>Mission</h2>
+      <div class="utilityBar">
+    <button class="btn primary" id="shopBtn">UPGRADE SHOP</button>
+  </div>
     <p id="msText">Collect 5 pellets.</p>
     <div class="track">
       <div class="miniBar"><div id="msFill" class="miniFill"></div></div>
@@ -345,7 +486,29 @@
     </div>
     <p id="dailyHint" style="margin:10px 0 0; color:var(--muted)">Daily: —</p>
   </aside>
+  <div class="shopOverlay" id="shopOverlay" role="dialog" aria-modal="true" aria-labelledby="shopTitle">
+    <div class="shopModal">
 
+      <div class="shopHeader">
+        <div>
+          <h3 id="shopTitle">UPGRADE SHOP</h3>
+          <div class="shopBalance">
+            SHARDS: <span id="shopShards">0</span>
+          </div>
+        </div>
+
+        <button class="btn" id="shopClose">CLOSE</button>
+      </div>
+
+      <div class="shopGrid" id="shopGrid"></div>
+
+      <div class="shopFooter">
+        <button class="btn danger" id="shopCloseBottom">DONE</button>
+      </div>
+
+    </div>
+  </div>
+  
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-labelledby="ovTitle">
@@ -428,7 +591,13 @@
         startBtn: document.getElementById("startBtn"),
         muteBtn: document.getElementById("muteBtn"),
         preloadStatus: document.getElementById("preloadStatus"),
-      };
+      
+        shopBtn: document.getElementById("shopBtn"),
+        shopOverlay: document.getElementById("shopOverlay"),
+        shopClose: document.getElementById("shopClose"),
+        shopCloseBottom: document.getElementById("shopCloseBottom"),
+        shopGrid: document.getElementById("shopGrid"),
+        shopShards: document.getElementById("shopShards"),
 
       const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
       const lerp = (a, b, t) => a + (b - a) * t;
@@ -870,6 +1039,137 @@
         STORE.set(PKEY + "_uplv", upgradeLv, SECRET);
       }
 
+            // ---------------------------
+      // Upgrade Shop UI
+      // ---------------------------
+      const upgradeDescriptions = {
+        speed: "Increase player movement speed.",
+        maxHp: "Increase maximum player HP.",
+        empCd: "Reduce EMP cooldown.",
+        empRadius: "Increase EMP blast radius.",
+        magnet: "Increase automatic pellet attraction range.",
+      };
+
+      function renderUpgradeShop() {
+        el.shopShards.textContent = String(persistent.shards | 0);
+
+        el.shopGrid.innerHTML = upgrades.map(u => {
+          const lvl = upgradeLv[u.id] || 0;
+          const maxed = lvl >= u.max;
+          const cost = maxed ? 0 : upgradeCost(u.id);
+          const canBuy = !maxed && persistent.shards >= cost;
+
+          return `
+            <div class="upgradeCard">
+              <div class="upgradeTop">
+                <div class="upgradeName">${u.name}</div>
+                <div class="upgradeLevel">LV ${lvl}/${u.max}</div>
+              </div>
+
+              <div class="upgradeDesc">
+                ${upgradeDescriptions[u.id] || "Improve this system."}
+              </div>
+
+              <div class="upgradeCost">
+                ${maxed ? "MAX LEVEL" : `COST: ${cost} SHARDS`}
+              </div>
+
+              <button
+                class="btn ${canBuy ? "primary" : ""}"
+                data-upgrade="${u.id}"
+                ${canBuy ? "" : "disabled"}>
+                ${maxed ? "MAXED" : "UPGRADE"}
+              </button>
+            </div>
+          `;
+        }).join("");
+      }
+
+      function openUpgradeShop() {
+        if (gameOver) {
+          // Shop is still allowed after death.
+        }
+
+        paused = true;
+        renderUpgradeShop();
+        el.shopOverlay.style.display = "grid";
+      }
+
+      function closeUpgradeShop() {
+        el.shopOverlay.style.display = "none";
+
+        if (!gameOver) {
+          paused = false;
+        }
+
+        updateUI();
+      }
+
+      function buyUpgrade(id) {
+        const u = upgrades.find(x => x.id === id);
+        if (!u) return;
+
+        const lvl = upgradeLv[id] || 0;
+
+        if (lvl >= u.max) {
+          toast(u.name + " sudah MAX.");
+          return;
+        }
+
+        const cost = upgradeCost(id);
+
+        if (persistent.shards < cost) {
+          toast("Shards tidak cukup.");
+          sfx({
+            f: 120,
+            t: "square",
+            d: 0.08,
+            v: 0.05,
+            bend: -30,
+            noise: 0.10
+          });
+          HAPTICS.pattern("miss");
+          return;
+        }
+
+        persistent.shards -= cost;
+        upgradeLv[id] = lvl + 1;
+
+        applyUpgrades();
+
+        toast(`${u.name} upgraded → LV ${upgradeLv[id]}`);
+        sfx({
+          f: 520 + upgradeLv[id] * 35,
+          t: "triangle",
+          d: 0.12,
+          v: 0.07,
+          bend: 140
+        });
+        HAPTICS.pattern("upgrade");
+
+        renderUpgradeShop();
+        updateUI();
+      }
+
+      el.shopBtn.addEventListener("click", () => {
+        openUpgradeShop();
+      });
+
+      el.shopClose.addEventListener("click", () => {
+        closeUpgradeShop();
+      });
+
+      el.shopCloseBottom.addEventListener("click", () => {
+        closeUpgradeShop();
+      });
+
+      el.shopGrid.addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-upgrade]");
+        if (!btn || btn.disabled) return;
+
+        buyUpgrade(btn.dataset.upgrade);
+      });
+
       // ---------------------------
       // Drawing utils
       // ---------------------------
@@ -1118,6 +1418,12 @@
 
       function togglePause() {
         if (gameOver) return;
+
+        if (el.shopOverlay.style.display === "grid") {
+        closeUpgradeShop();
+        return;
+      }
+   
         paused = !paused;
         toast(paused ? "Paused" : "Resumed");
       }
@@ -2013,6 +2319,8 @@
       // Reset / start
       // ---------------------------
       function resetRun() {
+        el.shopOverlay.style.display = "none";
+
         paused = false;
         gameOver = false;
         freezeMs = 0;
