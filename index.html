@@ -449,33 +449,63 @@
       }
 
       function enemyTypeByWave() {
-  const w = run.wave;
+  const wave = run.wave;
+  const level = run.level;
   const r = Math.random();
 
-  // Wave 5+ : Tank
-  if (
-    w >= 5 &&
-    r > 0.90
-  ) {
-    return "TANK";
+  // ---------------------------
+  // Early game
+  // ---------------------------
+  if (wave < 3 && level < 3) {
+    return "STALKER";
   }
 
-  // Wave 4+ : Snipe
+  // ---------------------------
+  // WISP
+  // Fast pressure enemy
+  // ---------------------------
   if (
-    w >= 4 &&
-    r > 0.76
-  ) {
-    return "SNIPE";
-  }
-
-  // Wave 3+ : Wisp
-  if (
-    w >= 3 &&
-    r > 0.58
+    wave >= 3 &&
+    r < Math.min(
+      0.18,
+      0.08 + level * 0.008
+    )
   ) {
     return "WISP";
   }
 
+  // ---------------------------
+  // SNIPE
+  // Appears from wave 4
+  // Becomes more common later
+  // ---------------------------
+  if (
+    wave >= 4 &&
+    r < Math.min(
+      0.34,
+      0.16 + level * 0.012
+    )
+  ) {
+    return "SNIPE";
+  }
+
+  // ---------------------------
+  // TANK
+  // Rare early, increasingly common
+  // ---------------------------
+  if (
+    wave >= 5 &&
+    r > Math.max(
+      0.78,
+      0.94 - level * 0.012
+    )
+  ) {
+    return "TANK";
+  }
+
+  // ---------------------------
+  // Default
+  // ---------------------------
   return "STALKER";
 }
 
@@ -547,10 +577,20 @@
     t === "SNIPE" ? 1.25 :
     1.38;
 
-  const finalSpeed =
-    baseSpeed *
-    levelScale *
-    waveScale;
+  const evolutionBonus =
+  t === "WISP"
+    ? 1 + Math.min(0.22, run.level * 0.006)
+    : t === "SNIPE"
+      ? 1 + Math.min(0.16, run.level * 0.004)
+      : t === "TANK"
+        ? 1 + Math.min(0.10, run.level * 0.003)
+        : 1;
+
+const finalSpeed =
+  baseSpeed *
+  levelScale *
+  waveScale *
+  evolutionBonus;
 
   enemies.push({
     x,
@@ -699,6 +739,8 @@
         if (wave.inBoss) {
           wave.bossWarning = 1100;
           bossWarning();
+        }
+        
         }
 
       function updateWave(dt) {
@@ -1168,29 +1210,84 @@
       // Powerups
       // ---------------------------
       function activatePower(type) {
-        if (type === "doubleScore") run.doubleScore = 10000;
-        if (type === "shield") run.shield = 9000;
-        if (type === "infiniteEMP") run.infiniteEMP = 5500;
-        toast("Power-up: " + type);
-        sfx({ f: 780, t: "triangle", d: 0.12, v: 0.06, bend: 90 });
-        camShake(2);
-        freeze(20);
-        HAPTICS.pattern("upgrade");
-      }
-      function updatePowerUps(dt) {
-        run.doubleScore = Math.max(0, run.doubleScore - dt);
-        run.shield = Math.max(0, run.shield - dt);
-        run.infiniteEMP = Math.max(0, run.infiniteEMP - dt);
-        for (let i = powerUps.length - 1; i >= 0; i--) {
-          const p = powerUps[i];
-          p.t += dt;
-          const d = Math.hypot(player.x - p.x, player.y - p.y);
-          if (d < player.r + p.r + 4) {
-            activatePower(p.type);
-            powerUps.splice(i, 1);
-          }
-        }
-      }
+  const config = {
+    doubleScore: {
+      duration: 10000,
+      label: "DOUBLE SCORE",
+      color: "#FFD056",
+      freq: 880
+    },
+
+    shield: {
+      duration: 9000,
+      label: "SHIELD",
+      color: "#4DFF9A",
+      freq: 620
+    },
+
+    infiniteEMP: {
+      duration: 5500,
+      label: "INFINITE EMP",
+      color: "#00F6FF",
+      freq: 1040
+    }
+  };
+
+  const power = config[type];
+  if (!power) return;
+
+  if (type === "doubleScore") {
+    run.doubleScore = power.duration;
+  }
+
+  if (type === "shield") {
+    run.shield = power.duration;
+  }
+
+  if (type === "infiniteEMP") {
+    run.infiniteEMP = power.duration;
+    emp.ready = true;
+    emp.t = 0;
+  }
+
+  toast(power.label + " ACTIVE");
+
+  addFloating(
+    power.label,
+    player.x,
+    player.y - 38,
+    power.color
+  );
+
+  burst(
+    player.x,
+    player.y,
+    power.color,
+    24,
+    0.95
+  );
+
+  camShake(3);
+  freeze(35);
+
+  sfx({
+    f: power.freq,
+    t: "triangle",
+    d: 0.12,
+    v: 0.07,
+    bend: 120
+  });
+
+  sfx({
+    f: power.freq * 1.5,
+    t: "sine",
+    d: 0.18,
+    v: 0.045,
+    bend: 180
+  });
+
+  HAPTICS.pattern("upgrade");
+}
 
       // ---------------------------
       // Achievements (simple)
@@ -2303,14 +2400,151 @@ ctx.shadowBlur = 0;
         ctx.shadowBlur = 0;
 
         if (run.shield > 0) {
-          ctx.globalAlpha = 0.55 + 0.25 * Math.sin(performance.now() / 180);
-          ctx.strokeStyle = "rgba(77,255,154,.85)";
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.arc(player.x, player.y, player.r + 8, 0, Math.PI * 2);
-          ctx.stroke();
-        }
-        ctx.restore();
+  ctx.globalAlpha =
+    0.55 +
+    0.25 * Math.sin(performance.now() / 180);
+
+  ctx.strokeStyle =
+    "rgba(77,255,154,.85)";
+
+  ctx.lineWidth = 2;
+
+  ctx.beginPath();
+
+  ctx.arc(
+    player.x,
+    player.y,
+    player.r + 8,
+    0,
+    Math.PI * 2
+  );
+
+  ctx.stroke();
+}
+
+if (run.doubleScore > 0) {
+  const pulse =
+    0.55 +
+    0.25 *
+    Math.sin(
+      performance.now() / 120
+    );
+
+  ctx.globalAlpha = pulse;
+
+  ctx.strokeStyle =
+    "rgba(255,208,86,.90)";
+
+  ctx.lineWidth = 2;
+
+  ctx.beginPath();
+
+  ctx.arc(
+    player.x,
+    player.y,
+    player.r + 13,
+    0,
+    Math.PI * 2
+  );
+
+  ctx.stroke();
+}
+
+if (run.infiniteEMP > 0) {
+  const pulse =
+    0.55 +
+    0.25 *
+    Math.sin(
+      performance.now() / 90
+    );
+
+  ctx.globalAlpha = pulse;
+
+  ctx.strokeStyle =
+    "rgba(0,246,255,.90)";
+
+  ctx.lineWidth = 2;
+
+  ctx.beginPath();
+
+  ctx.arc(
+    player.x,
+    player.y,
+    player.r + 18,
+    0,
+    Math.PI * 2
+  );
+
+  ctx.stroke();
+}
+
+ctx.restore();
+
+        const activePowers = [];
+
+if (run.doubleScore > 0) {
+  activePowers.push({
+    label: "2X",
+    time: run.doubleScore,
+    color: "#FFD056"
+  });
+}
+
+if (run.shield > 0) {
+  activePowers.push({
+    label: "SHIELD",
+    time: run.shield,
+    color: "#4DFF9A"
+  });
+}
+
+if (run.infiniteEMP > 0) {
+  activePowers.push({
+    label: "EMP",
+    time: run.infiniteEMP,
+    color: "#00F6FF"
+  });
+}
+
+if (activePowers.length) {
+  ctx.save();
+
+  ctx.font =
+    "700 9px 'JetBrains Mono', monospace";
+
+  ctx.textAlign = "center";
+
+  activePowers.forEach((power, index) => {
+    const seconds =
+      Math.ceil(power.time / 1000);
+
+    const y =
+      player.y +
+      30 +
+      index * 11;
+
+    ctx.globalAlpha =
+      power.time < 2000
+        ? 0.55 +
+          0.45 *
+          Math.sin(
+            performance.now() / 80
+          )
+        : 0.9;
+
+    ctx.fillStyle = power.color;
+
+    ctx.fillText(
+      `${power.label} ${seconds}s`,
+      player.x,
+      y
+    );
+  });
+
+  ctx.restore();
+}
+
+ctx.font = "700 14px 'JetBrains Mono', monospace";
 
         ctx.font = "700 14px 'JetBrains Mono', monospace";
         ctx.textAlign = "center";
