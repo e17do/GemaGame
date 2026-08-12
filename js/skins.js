@@ -264,9 +264,48 @@ function initSkinShop(
     return;
   }
 
-  if (!ui.skinGrid) {
+  if (
+    !ui.skinBtn ||
+    !ui.skinOverlay ||
+    !ui.skinClose ||
+    !ui.skinCloseBottom ||
+    !ui.skinGrid
+  ) {
+    console.warn(
+      "Skin Shop UI elements are missing."
+    );
+
     return;
   }
+
+  function openSkinShop() {
+    ui.skinOverlay.style.display =
+      "grid";
+
+    renderSkinShop(ui);
+  }
+
+  function closeSkinShop() {
+    ui.skinOverlay.style.display =
+      "none";
+
+    helpers.updateUI();
+  }
+
+  ui.skinBtn.addEventListener(
+    "click",
+    openSkinShop
+  );
+
+  ui.skinClose.addEventListener(
+    "click",
+    closeSkinShop
+  );
+
+  ui.skinCloseBottom.addEventListener(
+    "click",
+    closeSkinShop
+  );
 
   ui.skinGrid.addEventListener(
     "click",
@@ -278,11 +317,13 @@ function initSkinShop(
         );
 
       if (buyBtn) {
+
         buySkin(
           buyBtn.dataset.skinBuy
         );
 
         renderSkinShop(ui);
+
         return;
       }
 
@@ -292,6 +333,7 @@ function initSkinShop(
         );
 
       if (equipBtn) {
+
         equipSkin(
           equipBtn.dataset.skinEquip
         );
