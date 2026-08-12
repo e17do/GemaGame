@@ -623,6 +623,12 @@ const finalSpeed =
     lastKnownY: y,
 
     nearMissed: false,
+    
+    wispPhase: Math.random() * Math.PI * 2,
+    wispDir: Math.random() < 0.5 ? -1 : 1,
+
+    dashWarning: 0,
+    dashWarned: false,
   });
 }
 
@@ -864,6 +870,102 @@ const finalSpeed =
         }
         sfx({ f: 210, t: "square", d: 0.10, v: 0.07, bend: 60, noise: 0.06 });
       }
+
+      function updateBossPhase(en) {
+  if (!en || en.type !== "BOSS") {
+    return;
+  }
+
+  const maxHp =
+    Math.max(
+      1,
+      en.maxHp || en.hp || 1
+    );
+
+  const hpRatio =
+    clamp(
+      (en.hp || 0) / maxHp,
+      0,
+      1
+    );
+
+  let phase = 1;
+
+  if (hpRatio <= 0.25) {
+    phase = 3;
+  } else if (hpRatio <= 0.60) {
+    phase = 2;
+  }
+
+  if (en.bossPhase === phase) {
+    return;
+  }
+
+  en.bossPhase = phase;
+
+  if (phase === 2) {
+    en.shotCd = Math.min(
+      en.shotCd || 900,
+      700
+    );
+
+    burst(
+      en.x,
+      en.y,
+      "rgba(255,208,86,1)",
+      20,
+      0.8
+    );
+
+    camShake(4);
+
+    toast("BOSS PHASE 2");
+
+    sfx({
+      f: 420,
+      t: "sawtooth",
+      d: 0.22,
+      v: 0.07,
+      bend: 180
+    });
+
+    HAPTICS.pattern("bossHit");
+
+  } else if (phase === 3) {
+    en.shotCd = Math.min(
+      en.shotCd || 600,
+      480
+    );
+
+    burst(
+      en.x,
+      en.y,
+      "rgba(255,59,59,1)",
+      28,
+      1.1
+    );
+
+    camShake(7);
+
+    slowmo(
+      140,
+      0.55
+    );
+
+    toast("BOSS ENRAGED!");
+
+    sfx({
+      f: 120,
+      t: "square",
+      d: 0.28,
+      v: 0.09,
+      bend: -80,
+      noise: 0.18
+    });
+
+    HAPTICS.pattern("bossHit");
+  }
+}
 
       const bigPelletEveryWaves = 3;
 
@@ -1898,176 +2000,586 @@ if (run.comboRecovery) {
       // ---------------------------
       // Enemies update (boss makes all visible)
       // ---------------------------
-      function updateEnemies(dt) {
-        const revealAll = bossAlive();
-        for (let i = enemies.length - 1; i >= 0; i--) {
-          const en = enemies[i];
-          const dxp = player.x - en.x;
-          const dyp = player.y - en.y;
-          const dist = Math.hypot(dxp, dyp);
+function updateEnemies(dt) {
+  const revealAll = bossAlive();
 
-// ---------------------------
-// Enemies are always visible.
-// Radar no longer controls
-// enemy visibility.
-// ---------------------------
+  for (let i = enemies.length - 1; i >= 0; i--) {
+    const en = enemies[i];
 
-en.seen = 1;
-en.aggro = 1;
+    const dxp = player.x - en.x;
+    const dyp = player.y - en.y;
+    const dist = Math.hypot(dxp, dyp);
 
-en.lastKnownX = en.x;
-en.lastKnownY = en.y;
+    // ---------------------------
+    // Enemies are always visible.
+    // Radar no longer controls
+    // enemy visibility.
+    // ---------------------------
 
-// Radar becomes an information
-// mechanic instead of visibility.
-if (
-  radar.active &&
-  Math.abs(
-    dist - radar.radius
-  ) < 35
+    en.seen = 1;
+    en.aggro = 1;
+
+    en.lastKnownX = en.x;
+    en.lastKnownY = en.y;
+
+    // ---------------------------
+    // Radar becomes an information
+    // mechanic instead of visibility.
+    // ---------------------------
+
+    if (
+      radar.active &&
+      Math.abs(
+        dist - radar.radius
+      ) < 35
+    ) {
+      en.lastKnownX = en.x;
+      en.lastKnownY = en.y;
+
+      if (en.type === "SNIPE") {
+        en.dashWind = 520;
+      }
+
+      if (en.type === "WISP") {
+        sfx({
+          f: 120,
+          t: "triangle",
+          d: 0.05,
+          v: 0.03
+        });
+      }
+    }
+
+    // ---------------------------
+    // BOSS
+    // ---------------------------
+
+    if (en.type === "BOSS") {
+      if (
+        en.y < WORLD.h * 0.20
+      ) {
+        en.y += en.vy * dt * 0.06;
+      } else {
+        en.vx = lerp(
+          en.vx,
+          Math.sin(run.timeMs / 700) *
+            (1.2 + run.wave * 0.06),
+          0.03
+        );
+
+        en.x += en.vx;
+
+        en.y +=
+          Math.sin(run.timeMs / 520) *
+          0.12;
+
+        en.shotCd =
+          (en.shotCd || 0) - dt;
+
+        if (en.shotCd <= 0) {
+          en.shotCd =
+            Math.max(
+              620,
+              1600 - run.wave * 80
+            );
+
+          bossFire(en);
+        }
+      }
+
+      en.x = clamp(
+        en.x,
+        en.r + 10,
+        WORLD.w - en.r - 10
+      );
+
+      continue;
+    }
+
+    // ---------------------------
+    // Base enemy speed
+    // ---------------------------
+
+    let targetSpeed =
+      en.speed *
+      (0.7 + 0.6 * en.aggro);
+
+if (en.type === "TANK") {
+  const level =
+    Math.max(
+      1,
+      Math.floor(run?.level || 1)
+    );
+
+  const evolution =
+    Math.min(
+      1,
+      Math.max(
+        0,
+        (level - 3) / 12
+      )
+    );
+
+  targetSpeed *=
+    0.85 -
+    evolution * 0.08;
+
+  en.tankMomentum =
+    0.10 +
+    evolution * 0.10;
+}
+
+    if (en.type === "WISP") {
+      targetSpeed *= 1.12;
+    }
+
+    if (en.type === "WISP") {
+  const level =
+    Math.max(
+      1,
+      Math.floor(run?.level || 1)
+    );
+
+  const evolution =
+    Math.min(
+      1,
+      Math.max(
+        0,
+        (level - 2) / 10
+      )
+    );
+
+  en.wispPhase +=
+    dt * (
+      0.004 +
+      evolution * 0.006
+    );
+
+  const wobble =
+    Math.sin(en.wispPhase) *
+    (
+      0.10 +
+      evolution * 0.22
+    );
+
+  const a =
+    Math.atan2(
+      dyp,
+      dxp
+    );
+
+  const sideX =
+    -Math.sin(a);
+
+  const sideY =
+    Math.cos(a);
+
+  en.vx +=
+    sideX *
+    targetSpeed *
+    wobble *
+    0.08;
+
+  en.vy +=
+    sideY *
+    targetSpeed *
+    wobble *
+    0.08;
+}
+
+    // ---------------------------
+    // SNIPE wind-up / dash
+    // ---------------------------
+
+ if (
+  en.type === "SNIPE" &&
+  en.dashWind > 0
 ) {
-  en.lastKnownX = en.x;
-  en.lastKnownY = en.y;
+  en.dashWind -= dt;
 
+  // -------------------------
+  // SNIPE telegraph
+  // -------------------------
+
+  const warning =
+    clamp(
+      1 - en.dashWind / 520,
+      0,
+      1
+    );
+
+  const pulse =
+    0.5 +
+    0.5 *
+    Math.sin(
+      run.timeMs * (
+        0.012 +
+        warning * 0.018
+      )
+    );
+
+  // Store warning intensity so
+  // renderer can use it later.
+  en.dashWarning =
+    warning * (
+      0.45 +
+      pulse * 0.55
+    );
+
+  // Make the final part of the
+  // telegraph increasingly obvious.
   if (
-    en.type === "SNIPE"
+    en.dashWind < 220 &&
+    !en.dashWarned
   ) {
-    en.dashWind = 520;
+    en.dashWarned = true;
+
+    sfx({
+      f: 260,
+      t: "square",
+      d: 0.055,
+      v: 0.035,
+      bend: 70
+    });
   }
 
-  if (
-    en.type === "WISP"
-  ) {
+  if (en.dashWind <= 0) {
+    en.dash = 260;
+    en.dashWarning = 0;
+    en.dashWarned = false;
+
     sfx({
-      f: 120,
-      t: "triangle",
-      d: 0.05,
-      v: 0.03
+      f: 180,
+      t: "sawtooth",
+      d: 0.08,
+      v: 0.05,
+      bend: 90
     });
   }
 }
 
-          if (en.type === "BOSS") {
-            if (en.y < WORLD.h * 0.20) en.y += en.vy * dt * 0.06;
-            else {
-              en.vx = lerp(en.vx, Math.sin(run.timeMs / 700) * (1.2 + run.wave * 0.06), 0.03);
-              en.x += en.vx;
-              en.y += Math.sin(run.timeMs / 520) * 0.12;
-              en.shotCd = (en.shotCd || 0) - dt;
-              if (en.shotCd <= 0) {
-                en.shotCd = Math.max(620, 1600 - run.wave * 80);
-                bossFire(en);
-              }
-            }
-            en.x = clamp(en.x, en.r + 10, WORLD.w - en.r - 10);
-            continue;
+    if (
+      en.type === "SNIPE" &&
+      en.dash > 0
+    ) {
+      en.dash -= dt;
+      targetSpeed *= 3.0;
+    }
+
+    // ---------------------------
+    // Enemy steering
+    // ---------------------------
+
+    if (en.aggro > 0.06) {
+      const a =
+        Math.atan2(
+          dyp,
+          dxp
+        );
+
+      let steerX =
+        Math.cos(a);
+
+      let steerY =
+        Math.sin(a);
+
+      // -------------------------
+      // STALKER evolution
+      // -------------------------
+      //
+      // Higher level/wave STALKERs
+      // gradually add lateral
+      // movement instead of always
+      // moving directly toward player.
+      // -------------------------
+
+      if (en.type === "STALKER") {
+        const level =
+          Math.max(
+            1,
+            Math.floor(
+              run?.level || 1
+            )
+          );
+
+        const wave =
+          Math.max(
+            1,
+            Math.floor(
+              run?.wave || 1
+            )
+          );
+
+        const evolution =
+          Math.min(
+            1,
+            Math.max(
+              0,
+              ((level - 3) / 10) +
+              ((wave - 2) / 14)
+            )
+          );
+
+        if (evolution > 0) {
+          if (
+            !en.flankDir ||
+            Math.random() < 0.002
+          ) {
+            en.flankDir =
+              Math.random() < 0.5
+                ? -1
+                : 1;
           }
 
-          let targetSpeed = en.speed * (0.7 + 0.6 * en.aggro);
-          if (en.type === "TANK") targetSpeed *= 0.85;
-          if (en.type === "WISP") targetSpeed *= 1.12;
+          const sideX = -steerY;
+          const sideY = steerX;
 
-          if (en.type === "SNIPE" && en.dashWind > 0) {
-            en.dashWind -= dt;
-            if (en.dashWind <= 0) {
-              en.dash = 260;
-              sfx({ f: 180, t: "sawtooth", d: 0.08, v: 0.05, bend: 90 });
-            }
-          }
-          if (en.type === "SNIPE" && en.dash > 0) {
-            en.dash -= dt;
-            targetSpeed *= 3.0;
-          }
+          const flankStrength =
+            0.18 +
+            evolution * 0.34;
 
-          if (en.aggro > 0.06) {
-            const a = Math.atan2(dyp, dxp);
-            en.vx = lerp(en.vx, Math.cos(a) * targetSpeed, 0.08);
-            en.vy = lerp(en.vy, Math.sin(a) * targetSpeed, 0.08);
-          } else {
-            en.vx *= 0.985;
-            en.vy *= 0.985;
-          }
+          steerX =
+            steerX +
+            sideX *
+              flankStrength *
+              en.flankDir;
 
-          en.x += en.vx;
-          en.y += en.vy;
+          steerY =
+            steerY +
+            sideY *
+              flankStrength *
+              en.flankDir;
 
-          if (en.x < -70) en.x = WORLD.w + 70;
-          if (en.x > WORLD.w + 70) en.x = -70;
-          if (en.y < -70) en.y = WORLD.h + 70;
-          if (en.y > WORLD.h + 70) en.y = -70;
+          const steerLen =
+            Math.hypot(
+              steerX,
+              steerY
+            ) || 1;
 
-          const contactDist =
-  Math.hypot(
-    player.x - en.x,
-    player.y - en.y
-  );
+          steerX /=
+            steerLen;
 
-const collisionDist =
-  player.r + en.r;
-
-const nearMissDist =
-  collisionDist + 28;
-
-if (
-  contactDist > collisionDist &&
-  contactDist <= nearMissDist
-) {
-  enemyNearMissFeedback(
-    en,
-    contactDist
-  );
-}
-
-          if (contactDist < collisionDist) {
-            if (player.invuln <= 0) {
-              if (run.shield > 0) {
-                run.shield = 0;
-                burst(en.x, en.y, "rgba(77,255,154,1)", 16, 0.9);
-                sfx({ f: 520, t: "triangle", d: 0.10, v: 0.06, bend: 120 });
-                toast("Shield absorbed hit");
-                enemies.splice(i, 1);
-                continue;
-              }
-
-              run.hits++;
-              player.invuln = 700;
-              camShake(16);
-              slowmo(180, 0.30);
-              freeze(45);
-
-              const dmg = en.type === "TANK" ? 34 : en.type === "SNIPE" ? 28 : 22;
-              player.hp -= dmg;
-
-              burst(en.x, en.y, "rgba(255,59,59,1)", 16, 0.95);
-              sfx({ f: 95, t: "square", d: 0.16, v: 0.10, bend: -25, noise: 0.15 });
-
-              run.comboCount = 0;
-              run.comboMul = 1;
-              run.comboTimer = 0;
-              el.uiCombo.textContent = "1x";
-
-              enemies.splice(i, 1);
-              spawnEnemy();
-
-              if (mission.type === "nohitPellets") {
-  mission.cur = 0;
-
-  updateMissionUI();
-
-  toast("No-hit mission reset");
-}
-
-              HAPTICS.pattern("hit");
-
-              if (player.hp <= 0) {
-                player.hp = 0;
-                die();
-                return;
-              }
-            }
-          }
+          steerY /=
+            steerLen;
         }
       }
+
+const steerAmount =
+  en.type === "TANK"
+    ? (
+        en.tankMomentum ||
+        0.10
+      )
+    : 0.08;
+
+en.vx = lerp(
+  en.vx,
+  steerX * targetSpeed,
+  steerAmount
+);
+
+en.vy = lerp(
+  en.vy,
+  steerY * targetSpeed,
+  steerAmount
+);
+    } else {
+      en.vx *= 0.985;
+      en.vy *= 0.985;
+    }
+
+    // ---------------------------
+    // Movement
+    // ---------------------------
+
+    en.x += en.vx;
+    en.y += en.vy;
+
+    // ---------------------------
+    // World wrapping
+    // ---------------------------
+
+    if (en.x < -70) {
+      en.x = WORLD.w + 70;
+    }
+
+    if (en.x > WORLD.w + 70) {
+      en.x = -70;
+    }
+
+    if (en.y < -70) {
+      en.y = WORLD.h + 70;
+    }
+
+    if (en.y > WORLD.h + 70) {
+      en.y = -70;
+    }
+
+    // ---------------------------
+    // Collision distances
+    // ---------------------------
+
+    const contactDist =
+      Math.hypot(
+        player.x - en.x,
+        player.y - en.y
+      );
+
+    const collisionDist =
+      player.r + en.r;
+
+    const nearMissDist =
+      collisionDist + 28;
+
+    // ---------------------------
+    // Near Miss
+    // ---------------------------
+
+    if (
+      contactDist > collisionDist &&
+      contactDist <= nearMissDist
+    ) {
+      enemyNearMissFeedback(
+        en,
+        contactDist
+      );
+    }
+
+    // ---------------------------
+    // Player collision
+    // ---------------------------
+
+    if (
+      contactDist < collisionDist
+    ) {
+      if (player.invuln <= 0) {
+
+        // -------------------------
+        // Shield
+        // -------------------------
+
+        if (run.shield > 0) {
+          run.shield = 0;
+
+          burst(
+            en.x,
+            en.y,
+            "rgba(77,255,154,1)",
+            16,
+            0.9
+          );
+
+          sfx({
+            f: 520,
+            t: "triangle",
+            d: 0.10,
+            v: 0.06,
+            bend: 120
+          });
+
+          toast(
+            "Shield absorbed hit"
+          );
+
+          enemies.splice(i, 1);
+
+          continue;
+        }
+
+        // -------------------------
+        // Damage
+        // -------------------------
+
+        run.hits++;
+
+        player.invuln = 700;
+
+        camShake(16);
+
+        slowmo(
+          180,
+          0.30
+        );
+
+        freeze(45);
+
+        const dmg =
+          en.type === "TANK"
+            ? 34
+            : en.type === "SNIPE"
+              ? 28
+              : 22;
+
+        player.hp -= dmg;
+
+        burst(
+          en.x,
+          en.y,
+          "rgba(255,59,59,1)",
+          16,
+          0.95
+        );
+
+        sfx({
+          f: 95,
+          t: "square",
+          d: 0.16,
+          v: 0.10,
+          bend: -25,
+          noise: 0.15
+        });
+
+        // -------------------------
+        // Reset combo
+        // -------------------------
+
+        run.comboCount = 0;
+        run.comboMul = 1;
+        run.comboTimer = 0;
+
+        el.uiCombo.textContent =
+          "1x";
+
+        // -------------------------
+        // No-hit mission reset
+        // -------------------------
+
+        if (
+          mission.type ===
+          "nohitPellets"
+        ) {
+          mission.cur = 0;
+
+          updateMissionUI();
+
+          toast(
+            "No-hit mission reset"
+          );
+        }
+
+        enemies.splice(i, 1);
+
+        spawnEnemy();
+
+        HAPTICS.pattern(
+          "hit"
+        );
+
+        // -------------------------
+        // Death
+        // -------------------------
+
+        if (player.hp <= 0) {
+          player.hp = 0;
+
+          die();
+
+          return;
+        }
+      }
+    }
+  }
+}
 
       function updateBossShots(dt) {
         for (let i = bossShots.length - 1; i >= 0; i--) {
@@ -2094,6 +2606,11 @@ if (
               freeze(55);
 
               player.hp -= 24 + Math.floor(run.wave * 0.5);
+            if (mission.type === "nohitPellets") {
+              mission.cur = 0;
+              updateMissionUI();
+              toast("No-hit mission reset");
+            }
               burst(s.x, s.y, "rgba(255,59,59,1)", 14, 0.95);
               sfx({ f: 92, t: "square", d: 0.16, v: 0.10, bend: -25, noise: 0.18 });
 
@@ -2349,29 +2866,6 @@ if (
     });
 
     HAPTICS.pattern("upgrade");
-
-    // Small reward for reaching a new level
-    run.comboCount += 1;
-    run.comboTimer = Math.max(
-      run.comboTimer,
-      2500
-    );
-
-    const tier =
-      Math.floor(
-        (run.comboCount - 1) / 3
-      );
-
-    run.comboMul = clamp(
-      1 + tier,
-      1,
-      5
-    );
-
-    if (el.uiCombo) {
-      el.uiCombo.textContent =
-        run.comboMul + "x";
-    }
 
     // First-time level transition gets a slightly
     // stronger camera reaction.
