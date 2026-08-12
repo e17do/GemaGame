@@ -83,9 +83,10 @@ const upgradeLv = STORE.get(
 // ---------------------------
 
 function upgradeCost(id) {
-  const u = upgrades.find(
-    x => x.id === id
-  );
+  const u =
+    upgrades.find(
+      x => x.id === id
+    );
 
   if (!u) {
     return Infinity;
@@ -110,8 +111,7 @@ function applyUpgrades() {
     );
   }
 
-  // Sync persistent upgrade values
-  // to the runtime player.
+  // Sync player runtime values.
   if (typeof player !== "undefined") {
     player.speed =
       persistent.up.speed;
@@ -172,11 +172,11 @@ const upgradeDescriptions = {
 // Upgrade Shop UI
 // ---------------------------
 
-function renderUpgradeShop() {
-  el.shopShards.textContent =
+function renderUpgradeShop(ui) {
+  ui.shopShards.textContent =
     String(persistent.shards | 0);
 
-  el.shopGrid.innerHTML =
+  ui.shopGrid.innerHTML =
     upgrades.map(u => {
       const lvl =
         upgradeLv[u.id] || 0;
@@ -243,15 +243,15 @@ let shopPreviousPaused = false;
 // Open shop
 // ---------------------------
 
-function openUpgradeShop() {
+function openUpgradeShop(ui) {
   shopPreviousPaused =
     paused;
 
   paused = true;
 
-  renderUpgradeShop();
+  renderUpgradeShop(ui);
 
-  el.shopOverlay.style.display =
+  ui.shopOverlay.style.display =
     "grid";
 }
 
@@ -259,8 +259,8 @@ function openUpgradeShop() {
 // Close shop
 // ---------------------------
 
-function closeUpgradeShop() {
-  el.shopOverlay.style.display =
+function closeUpgradeShop(ui, helpers) {
+  ui.shopOverlay.style.display =
     "none";
 
   if (!gameOver) {
@@ -268,14 +268,18 @@ function closeUpgradeShop() {
       shopPreviousPaused;
   }
 
-  updateUI();
+  helpers.updateUI();
 }
 
 // ---------------------------
 // Buy upgrade
 // ---------------------------
 
-function buyUpgrade(id) {
+function buyUpgrade(
+  id,
+  ui,
+  helpers
+) {
   const u =
     upgrades.find(
       x => x.id === id
@@ -289,7 +293,7 @@ function buyUpgrade(id) {
     upgradeLv[id] || 0;
 
   if (lvl >= u.max) {
-    toast(
+    helpers.toast(
       u.name +
       " sudah MAX."
     );
@@ -301,11 +305,11 @@ function buyUpgrade(id) {
     upgradeCost(id);
 
   if (persistent.shards < cost) {
-    toast(
+    helpers.toast(
       "Shards tidak cukup."
     );
 
-    sfx({
+    helpers.sfx({
       f: 120,
       t: "square",
       d: 0.08,
@@ -314,7 +318,7 @@ function buyUpgrade(id) {
       noise: 0.10
     });
 
-    HAPTICS.pattern(
+    helpers.HAPTICS.pattern(
       "miss"
     );
 
@@ -329,11 +333,11 @@ function buyUpgrade(id) {
 
   applyUpgrades();
 
-  toast(
+  helpers.toast(
     `${u.name} upgraded → LV ${upgradeLv[id]}`
   );
 
-  sfx({
+  helpers.sfx({
     f:
       520 +
       upgradeLv[id] * 35,
@@ -343,11 +347,88 @@ function buyUpgrade(id) {
     bend: 140
   });
 
-  HAPTICS.pattern(
+  helpers.HAPTICS.pattern(
     "upgrade"
   );
 
-  renderUpgradeShop();
+  renderUpgradeShop(ui);
 
-  updateUI();
+  helpers.updateUI();
+}
+
+// ---------------------------
+// Upgrade Shop Initialization
+// ---------------------------
+
+function initUpgradeShop(
+  ui,
+  helpers
+) {
+  if (!ui || !helpers) {
+    return;
+  }
+
+  if (
+    !ui.shopBtn ||
+    !ui.shopClose ||
+    !ui.shopCloseBottom ||
+    !ui.shopGrid ||
+    !ui.shopOverlay
+  ) {
+    console.warn(
+      "Upgrade Shop UI elements are missing."
+    );
+
+    return;
+  }
+
+  ui.shopBtn.addEventListener(
+    "click",
+    () => {
+      openUpgradeShop(ui);
+    }
+  );
+
+  ui.shopClose.addEventListener(
+    "click",
+    () => {
+      closeUpgradeShop(
+        ui,
+        helpers
+      );
+    }
+  );
+
+  ui.shopCloseBottom.addEventListener(
+    "click",
+    () => {
+      closeUpgradeShop(
+        ui,
+        helpers
+      );
+    }
+  );
+
+  ui.shopGrid.addEventListener(
+    "click",
+    (e) => {
+      const btn =
+        e.target.closest(
+          "[data-upgrade]"
+        );
+
+      if (
+        !btn ||
+        btn.disabled
+      ) {
+        return;
+      }
+
+      buyUpgrade(
+        btn.dataset.upgrade,
+        ui,
+        helpers
+      );
+    }
+  );
 }
