@@ -47,7 +47,14 @@
   </aside>
 
   <div class="utilityBar">
-    <button class="btn primary" id="shopBtn">UPGRADE SHOP</button>
+    <button class="btn primary" id="shopBtn">
+      UPGRADE SHOP
+    </button>
+    
+    <button class="btn" id="skinBtn">
+      Skins
+    </button>
+    
   </div>
   <div class="shopOverlay" id="shopOverlay" role="dialog" aria-modal="true" aria-labelledby="shopTitle">
     <div class="shopModal">
@@ -124,6 +131,7 @@
   <script src="./js/state.js"></script>
   <script src="./js/missions.js"></script>
   <script src="./js/upgrades.js"></script>
+  <script src="./js/skins.js"></script>
   
   <script>
     (() => {
@@ -392,19 +400,6 @@
 
       function bossAlive() {
         return enemies.some(e => e.type === "BOSS");
-      }
-      
-      // ---------------------------
-      // Cosmetics
-      // ---------------------------
-      const skinDefs = {
-        neo: { name: "Neo", core: "rgba(0,246,255,1)", glow: "rgba(0,246,255,.65)" },
-        ember: { name: "Ember", core: "rgba(255,208,86,1)", glow: "rgba(255,208,86,.55)" },
-        void: { name: "Void", core: "rgba(190,120,255,1)", glow: "rgba(190,120,255,.55)" },
-      };
-      function currentSkin() {
-        const id = persistent.skins?.equipped || "neo";
-        return skinDefs[id] || skinDefs.neo;
       }
 
       // ---------------------------
@@ -1469,6 +1464,50 @@
          updateUI
        }
      );
+
+// ---------------------------
+// Initialize Skin Shop
+// ---------------------------
+
+initSkinShop(
+  {
+    skinBtn:
+      document.getElementById(
+        "skinBtn"
+      ),
+
+    skinOverlay:
+      document.getElementById(
+        "skinOverlay"
+      ),
+
+    skinClose:
+      document.getElementById(
+        "skinClose"
+      ),
+
+    skinCloseBottom:
+      document.getElementById(
+        "skinCloseBottom"
+      ),
+
+    skinGrid:
+      document.getElementById(
+        "skinGrid"
+      ),
+
+    skinShards:
+      document.getElementById(
+        "skinShards"
+      )
+  },
+  {
+    toast,
+    sfx,
+    HAPTICS,
+    updateUI
+  }
+);
       
       // ---------------------------
       // Death / revive
@@ -1673,5 +1712,66 @@
     }
   })();
 </script>
+
+<!-- ========================================
+     SKIN SHOP
+     ======================================== -->
+
+<div
+  class="overlay"
+  id="skinOverlay"
+  style="display:none;"
+>
+
+  <div class="panel skinPanel">
+
+    <div class="panelHead">
+
+      <div>
+        <div class="panelTitle">
+          SKIN ARCHIVE
+        </div>
+
+        <div class="panelSub">
+          Customize your GEMA core
+        </div>
+      </div>
+
+      <button
+        class="btn"
+        id="skinClose"
+      >
+        Close
+      </button>
+
+    </div>
+
+    <div class="skinBalance">
+      Shards:
+      <strong id="skinShards">
+        0
+      </strong>
+    </div>
+
+    <div
+      class="skinGrid"
+      id="skinGrid"
+    ></div>
+
+    <div class="panelFoot">
+
+      <button
+        class="btn"
+        id="skinCloseBottom"
+      >
+        Close
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
+  
 </body>
 </html>
