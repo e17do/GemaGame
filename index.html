@@ -1455,7 +1455,21 @@
         el.empDot.classList.toggle("ready", ready);
         el.empDot.classList.toggle("cool", !ready);
       }
+      
+      // ---------------------------
+      // Initialize Upgrade Shop
+     // ---------------------------
 
+     initUpgradeShop(
+       el,
+       {
+         toast,
+         sfx,
+         HAPTICS,
+         updateUI
+       }
+     );
+      
       // ---------------------------
       // Death / revive
       // ---------------------------
