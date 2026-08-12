@@ -581,6 +581,8 @@
 
     lastKnownX: x,
     lastKnownY: y
+      
+    nearMissed: false,
   });
 }
 
@@ -1030,6 +1032,53 @@
 
   HAPTICS.pattern("bossHit");
 }
+    function enemyNearMissFeedback(en, distance) {
+  if (en.nearMissed) return;
+
+  en.nearMissed = true;
+
+  const bonus =
+    en.type === "TANK" ? 8 :
+    en.type === "SNIPE" ? 10 :
+    en.type === "WISP" ? 6 :
+    5;
+
+  const comboBefore = run.comboMul;
+
+  run.score +=
+    bonus *
+    comboBefore *
+    (run.doubleScore > 0 ? 2 : 1);
+
+  comboOnAction();
+
+  burst(
+    player.x,
+    player.y,
+    "rgba(0,246,255,1)",
+    10,
+    0.55
+  );
+
+  addFloating(
+    `NEAR! +${bonus * comboBefore}`,
+    player.x,
+    player.y - 28,
+    "#00F6FF"
+  );
+
+  camShake(1.8);
+
+  sfx({
+    f: 760 + comboBefore * 70,
+    t: "sine",
+    d: 0.08,
+    v: 0.055,
+    bend: 180
+  });
+
+  HAPTICS.pattern("pellet");
+}
 
       // ---------------------------
       // Combo system
@@ -1199,7 +1248,29 @@ if (
           if (en.y < -70) en.y = WORLD.h + 70;
           if (en.y > WORLD.h + 70) en.y = -70;
 
-          if (dist < player.r + en.r) {
+          const contactDist =
+  Math.hypot(
+    player.x - en.x,
+    player.y - en.y
+  );
+
+const collisionDist =
+  player.r + en.r;
+
+const nearMissDist =
+  collisionDist + 28;
+
+if (
+  contactDist > collisionDist &&
+  contactDist <= nearMissDist
+) {
+  enemyNearMissFeedback(
+    en,
+    contactDist
+  );
+}
+
+          if (contactDist < collisionDist) {
             if (player.invuln <= 0) {
               if (run.shield > 0) {
                 run.shield = 0;
