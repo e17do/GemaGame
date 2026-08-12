@@ -1177,12 +1177,6 @@ dailyProgress("emps", 1);
           toast("EMP fired (no contacts)");
         }
 
-        if (mission.type === "emps") {
-          mission.cur++;
-          updateMissionUI();
-          if (mission.cur >= mission.goal) completeMission();
-        }
-
         for (let k = 0; k < Math.ceil(removed * 0.7); k++) spawnEnemy();
       }
 
@@ -2056,13 +2050,11 @@ if (
               spawnEnemy();
 
               if (mission.type === "nohitPellets") {
-  mission.cur++;
+  mission.cur = 0;
 
   updateMissionUI();
 
-  if (mission.cur >= mission.goal) {
-    completeMission();
-  }
+  toast("No-hit mission reset");
 }
 
               HAPTICS.pattern("hit");
