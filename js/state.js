@@ -29,6 +29,7 @@ const run = {
   comboCount: 0,
   comboTimer: 0,
   comboMul: 1,
+  comboRecovery: false,
   doubleScore: 0,
   shield: 0,
   infiniteEMP: 0,
