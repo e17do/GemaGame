@@ -449,13 +449,35 @@
       }
 
       function enemyTypeByWave() {
-        const w = run.wave;
-        const r = Math.random();
-        if (w >= 5 && r > 0.86) return "TANK";
-        if (w >= 3 && r > 0.74) return "WISP";
-        if (w >= 4 && r > 0.80) return "SNIPE";
-        return "STALKER";
-      }
+  const w = run.wave;
+  const r = Math.random();
+
+  // Wave 5+ : Tank
+  if (
+    w >= 5 &&
+    r > 0.90
+  ) {
+    return "TANK";
+  }
+
+  // Wave 4+ : Snipe
+  if (
+    w >= 4 &&
+    r > 0.76
+  ) {
+    return "SNIPE";
+  }
+
+  // Wave 3+ : Wisp
+  if (
+    w >= 3 &&
+    r > 0.58
+  ) {
+    return "WISP";
+  }
+
+  return "STALKER";
+}
 
       function spawnEnemy(type = null, angle = null, radius = null) {
   const t = type || enemyTypeByWave();
@@ -1414,19 +1436,172 @@ if (
           ctx.globalAlpha = a;
 
           if (en.type === "BOSS") {
-            const grd = ctx.createRadialGradient(en.x - 10, en.y - 10, 8, en.x, en.y, en.r * 1.5);
-            grd.addColorStop(0, "rgba(255,43,110,0.92)");
-            grd.addColorStop(1, "rgba(0,246,255,0.10)");
-            ctx.fillStyle = grd;
-            ctx.strokeStyle = "rgba(255,208,86,0.55)";
-            ctx.lineWidth = 2;
-            ctx.shadowBlur = 24;
-            ctx.shadowColor = "rgba(255,43,110,.55)";
-            ctx.beginPath();
-            ctx.arc(en.x, en.y, en.r, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.stroke();
-            ctx.shadowBlur = 0;
+            const pulse =
+  1 +
+  Math.sin(
+    performance.now() * 0.003
+  ) * 0.06;
+
+const r =
+  en.r * pulse;
+
+ctx.save();
+
+ctx.translate(
+  en.x,
+  en.y
+);
+
+ctx.rotate(
+  performance.now() * 0.00035
+);
+
+ctx.shadowBlur = 28;
+ctx.shadowColor =
+  "rgba(255,43,110,.75)";
+
+ctx.fillStyle =
+  "rgba(255,43,110,.88)";
+
+ctx.strokeStyle =
+  "rgba(255,208,86,.95)";
+
+ctx.lineWidth = 2.5;
+
+// ---------------------------
+// Outer boss diamond
+// ---------------------------
+
+ctx.beginPath();
+
+ctx.moveTo(
+  0,
+  -r * 1.25
+);
+
+ctx.lineTo(
+  r * 0.82,
+  -r * 0.35
+);
+
+ctx.lineTo(
+  r * 1.08,
+  0
+);
+
+ctx.lineTo(
+  r * 0.82,
+  r * 0.35
+);
+
+ctx.lineTo(
+  0,
+  r * 1.25
+);
+
+ctx.lineTo(
+  -r * 0.82,
+  r * 0.35
+);
+
+ctx.lineTo(
+  -r * 1.08,
+  0
+);
+
+ctx.lineTo(
+  -r * 0.82,
+  -r * 0.35
+);
+
+ctx.closePath();
+
+ctx.fill();
+ctx.stroke();
+
+// ---------------------------
+// Inner core
+// ---------------------------
+
+ctx.shadowBlur = 18;
+ctx.shadowColor =
+  "rgba(0,246,255,.85)";
+
+const core =
+  ctx.createRadialGradient(
+    -r * 0.2,
+    -r * 0.2,
+    2,
+    0,
+    0,
+    r * 0.55
+  );
+
+core.addColorStop(
+  0,
+  "rgba(255,255,255,.95)"
+);
+
+core.addColorStop(
+  0.35,
+  "rgba(0,246,255,.95)"
+);
+
+core.addColorStop(
+  1,
+  "rgba(0,246,255,.05)"
+);
+
+ctx.fillStyle = core;
+
+ctx.beginPath();
+
+ctx.arc(
+  0,
+  0,
+  r * 0.52,
+  0,
+  Math.PI * 2
+);
+
+ctx.fill();
+
+// ---------------------------
+// Boss energy spikes
+// ---------------------------
+
+ctx.strokeStyle =
+  "rgba(255,208,86,.72)";
+
+ctx.lineWidth = 2;
+
+for (
+  let i = 0;
+  i < 4;
+  i++
+) {
+
+  const a =
+    (Math.PI / 2) * i;
+
+  ctx.beginPath();
+
+  ctx.moveTo(
+    Math.cos(a) * r * 0.55,
+    Math.sin(a) * r * 0.55
+  );
+
+  ctx.lineTo(
+    Math.cos(a) * r * 1.48,
+    Math.sin(a) * r * 1.48
+  );
+
+  ctx.stroke();
+}
+
+ctx.restore();
+
+ctx.shadowBlur = 0;
 
             const w = 240, h = 10;
             const x = WORLD.w * 0.5 - w / 2;
@@ -1631,6 +1806,52 @@ if (
   // SNIPE
   // ---------------------------
   else if (en.type === "SNIPE") {
+
+    if (en.dashWind > 0) {
+
+  const charge =
+    1 -
+    en.dashWind / 520;
+
+  ctx.save();
+
+  ctx.rotate(
+    Math.atan2(
+      en.vy,
+      en.vx
+    )
+  );
+
+  ctx.strokeStyle =
+    `rgba(255,43,110,${0.18 + charge * 0.55})`;
+
+  ctx.lineWidth =
+    1.5 + charge * 2;
+
+  ctx.setLineDash([
+    5,
+    7
+  ]);
+
+  ctx.beginPath();
+
+  ctx.moveTo(
+    0,
+    0
+  );
+
+  ctx.lineTo(
+    en.r *
+      (4 + charge * 5),
+    0
+  );
+
+  ctx.stroke();
+
+  ctx.setLineDash([]);
+
+  ctx.restore();
+}
 
     const r =
       en.r * pulse;
