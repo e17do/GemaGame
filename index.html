@@ -458,37 +458,109 @@
       }
 
       function spawnEnemy(type = null, angle = null, radius = null) {
-        const t = type || enemyTypeByWave();
-        const rr = t === "TANK" ? 16 : t === "WISP" ? 7 : t === "SNIPE" ? 10 : 9;
+  const t = type || enemyTypeByWave();
 
-        let x, y;
-        if (angle != null) {
-          const r = radius ?? (Math.max(WORLD.w, WORLD.h) * 0.62);
-          x = player.x + Math.cos(angle) * r;
-          y = player.y + Math.sin(angle) * r;
-        } else {
-          x = Math.random() < 0.5 ? rand(-70, -20) : rand(WORLD.w + 20, WORLD.w + 70);
-          y = rand(10, WORLD.h - 10);
-          if (Math.random() < 0.5) {
-            x = rand(10, WORLD.w - 10);
-            y = Math.random() < 0.5 ? rand(-70, -20) : rand(WORLD.h + 20, WORLD.h + 70);
-          }
-        }
+  const rr =
+    t === "TANK" ? 16 :
+    t === "WISP" ? 8 :
+    t === "SNIPE" ? 11 :
+    10;
 
-        enemies.push({
-          x, y, vx: 0, vy: 0,
-          r: rr,
-          type: t,
-          hp: t === "TANK" ? 3 : 1,
-          seen: 0,
-          aggro: 0,
-          dash: 0,
-          dashWind: 0,
-          speed: (t === "TANK" ? 0.72 : t === "WISP" ? 2.15 : t === "SNIPE" ? 1.25 : 1.38) + run.level * 0.05,
-          lastKnownX: x,
-          lastKnownY: y,
-        });
-      }
+  let x, y;
+
+  if (angle != null) {
+    const r =
+      radius ??
+      (Math.max(WORLD.w, WORLD.h) * 0.62);
+
+    x =
+      player.x +
+      Math.cos(angle) * r;
+
+    y =
+      player.y +
+      Math.sin(angle) * r;
+
+  } else {
+
+    x =
+      Math.random() < 0.5
+        ? rand(-70, -20)
+        : rand(WORLD.w + 20, WORLD.w + 70);
+
+    y =
+      rand(10, WORLD.h - 10);
+
+    if (Math.random() < 0.5) {
+
+      x =
+        rand(10, WORLD.w - 10);
+
+      y =
+        Math.random() < 0.5
+          ? rand(-70, -20)
+          : rand(WORLD.h + 20, WORLD.h + 70);
+    }
+  }
+
+  // Difficulty scaling.
+  // Higher level and wave = faster enemies.
+  const levelScale =
+    1 +
+    Math.min(
+      1.15,
+      Math.max(0, run.level - 1) * 0.045
+    );
+
+  const waveScale =
+    1 +
+    Math.min(
+      0.45,
+      Math.max(0, run.wave - 1) * 0.015
+    );
+
+  const baseSpeed =
+    t === "TANK" ? 0.72 :
+    t === "WISP" ? 2.15 :
+    t === "SNIPE" ? 1.25 :
+    1.38;
+
+  const finalSpeed =
+    baseSpeed *
+    levelScale *
+    waveScale;
+
+  enemies.push({
+    x,
+    y,
+
+    vx: 0,
+    vy: 0,
+
+    r: rr,
+
+    type: t,
+
+    hp:
+      t === "TANK"
+        ? 3
+        : 1,
+
+    // Enemies are visible immediately.
+    seen: 1,
+
+    // Enemies immediately react to player.
+    aggro: 1,
+
+    dash: 0,
+    dashWind: 0,
+
+    speed: finalSpeed,
+
+    lastKnownX: x,
+    lastKnownY: y
+  });
+}
 
       function spawnPowerUp() {
         const types = ["doubleScore", "shield", "infiniteEMP"];
@@ -928,23 +1000,46 @@
           const dyp = player.y - en.y;
           const dist = Math.hypot(dxp, dyp);
 
-          if (revealAll) {
-            en.seen = 1;
-            en.aggro = 1;
-            en.lastKnownX = en.x;
-            en.lastKnownY = en.y;
-          } else {
-            if (radar.active && Math.abs(dist - radar.radius) < 35) {
-              en.seen = 1;
-              en.aggro = 1;
-              en.lastKnownX = en.x;
-              en.lastKnownY = en.y;
-              if (en.type === "SNIPE") en.dashWind = 520;
-              if (en.type === "WISP") sfx({ f: 120, t: "triangle", d: 0.05, v: 0.03 });
-            }
-            en.seen = Math.max(0, en.seen - dt * 0.0015);
-            en.aggro = Math.max(0, en.aggro - dt * 0.0008);
-          }
+// ---------------------------
+// Enemies are always visible.
+// Radar no longer controls
+// enemy visibility.
+// ---------------------------
+
+en.seen = 1;
+en.aggro = 1;
+
+en.lastKnownX = en.x;
+en.lastKnownY = en.y;
+
+// Radar becomes an information
+// mechanic instead of visibility.
+if (
+  radar.active &&
+  Math.abs(
+    dist - radar.radius
+  ) < 35
+) {
+  en.lastKnownX = en.x;
+  en.lastKnownY = en.y;
+
+  if (
+    en.type === "SNIPE"
+  ) {
+    en.dashWind = 520;
+  }
+
+  if (
+    en.type === "WISP"
+  ) {
+    sfx({
+      f: 120,
+      t: "triangle",
+      d: 0.05,
+      v: 0.03
+    });
+  }
+}
 
           if (en.type === "BOSS") {
             if (en.y < WORLD.h * 0.20) en.y += en.vy * dt * 0.06;
@@ -1315,8 +1410,7 @@
 
         const revealAll = bossAlive();
         for (const en of enemies) {
-          let a = en.type === "BOSS" ? 1 : (revealAll ? 1 : clamp(en.seen, 0, 1));
-          if (en.type !== "BOSS" && a <= 0.02) continue;
+          let a = 1;
           ctx.globalAlpha = a;
 
           if (en.type === "BOSS") {
