@@ -57,6 +57,41 @@ const missionPool = [
 let mission = missionPool[0]();
 
 // ---------------------------
+// Mission text
+// ---------------------------
+
+function updateMissionText() {
+  if (!mission) return;
+
+  switch (mission.type) {
+    case "pellets":
+      mission.text =
+        `Collect ${mission.goal} pellets.`;
+      break;
+
+    case "time":
+      mission.text =
+        `Survive ${Math.floor(mission.goal / 1000)} seconds.`;
+      break;
+
+    case "pings":
+      mission.text =
+        `Use radar ping ${mission.goal} times.`;
+      break;
+
+    case "nohitPellets":
+      mission.text =
+        `Collect ${mission.goal} pellets without taking a hit.`;
+      break;
+
+    case "emps":
+      mission.text =
+        `Detonate EMP ${mission.goal} times.`;
+      break;
+  }
+}
+
+// ---------------------------
 // Mission UI
 // ---------------------------
 
@@ -67,15 +102,23 @@ function updateMissionUI() {
     el.msText.textContent =
       `✓ ${mission.text} — COMPLETE`;
 
-    el.msA.textContent = mission.goal;
-    el.msB.textContent = mission.goal;
+    el.msA.textContent =
+      mission.type === "time"
+        ? Math.floor(mission.goal / 1000)
+        : mission.goal;
+
+    el.msB.textContent =
+      mission.type === "time"
+        ? Math.floor(mission.goal / 1000)
+        : mission.goal;
 
     el.msFill.style.width = "100%";
 
     return;
   }
 
-  el.msText.textContent = mission.text;
+  el.msText.textContent =
+    mission.text;
 
   el.msA.textContent =
     mission.type === "time"
@@ -98,23 +141,123 @@ function updateMissionUI() {
 }
 
 // ---------------------------
+// Mission difficulty scaling
+// ---------------------------
+
+function applyMissionScaling() {
+  if (!mission) return;
+
+  const level =
+    Math.max(
+      1,
+      Math.floor(run?.level || 1)
+    );
+
+  const tier =
+    Math.floor((level - 1) / 4);
+
+  switch (mission.type) {
+    case "pellets":
+      mission.goal =
+        5 + tier * 5;
+
+      mission.reward =
+        45 + tier * 15;
+      break;
+
+    case "time":
+      mission.goal =
+        (20 + tier * 10) * 1000;
+
+      mission.reward =
+        60 + tier * 20;
+      break;
+
+    case "pings":
+      mission.goal =
+        6 + tier * 3;
+
+      mission.reward =
+        40 + tier * 15;
+      break;
+
+    case "nohitPellets":
+      mission.goal =
+        10 + tier * 5;
+
+      mission.reward =
+        80 + tier * 25;
+      break;
+
+    case "emps":
+      mission.goal =
+        2 + tier;
+
+      mission.reward =
+        55 + tier * 20;
+      break;
+  }
+
+  mission.cur = 0;
+  mission.completed = false;
+
+  updateMissionText();
+}
+
+// ---------------------------
 // New mission
 // ---------------------------
 
 function newMission() {
-  mission =
-    missionPool[
-      Math.floor(
-        Math.random() * missionPool.length
-      )
-    ]();
+  if (!mission) {
+    mission =
+      missionPool[
+        Math.floor(
+          Math.random() * missionPool.length
+        )
+      ]();
+
+    applyMissionScaling();
+    updateMissionUI();
+
+    return;
+  }
+
+  const previousId =
+    mission.id;
+
+  let next;
+
+  do {
+    next =
+      missionPool[
+        Math.floor(
+          Math.random() * missionPool.length
+        )
+      ]();
+  } while (
+    missionPool.length > 1 &&
+    next.id === previousId
+  );
+
+  mission = next;
+
+  applyMissionScaling();
 
   updateMissionUI();
 
   toast(
-    "New mission: " +
+    "NEW MISSION: " +
     mission.text
   );
+
+  sfx({
+    f: 620,
+    t: "sine",
+    d: 0.09,
+    v: 0.045,
+    bend: 100
+  });
 }
 
 // ---------------------------
@@ -138,7 +281,8 @@ function completeMission() {
   // Reward
   // ---------------------------
 
-  persistent.shards += mission.reward;
+  persistent.shards +=
+    mission.reward;
 
   STORE.set(
     PKEY,
@@ -180,6 +324,23 @@ function completeMission() {
   HAPTICS.pattern("upgrade");
 
   updateUI();
+
+  // --------------------------------
+  // Automatically rotate mission
+  // after a short celebration
+  // --------------------------------
+
+  setTimeout(() => {
+    if (!mission) {
+      return;
+    }
+
+    if (!mission.completed) {
+      return;
+    }
+
+    newMission();
+  }, 1800);
 }
 
 // ---------------------------
@@ -193,7 +354,8 @@ function todayKey() {
 }
 
 function resetDailyIfNeeded() {
-  const today = todayKey();
+  const today =
+    todayKey();
 
   const d =
     persistent.daily || {
@@ -204,18 +366,21 @@ function resetDailyIfNeeded() {
     };
 
   if (d.day !== today) {
-    const prev = d.day
-      ? new Date(d.day)
-      : null;
+    const prev =
+      d.day
+        ? new Date(d.day)
+        : null;
 
-    const now = new Date(today);
+    const now =
+      new Date(today);
 
-    const diffDays = prev
-      ? Math.round(
-          (now - prev) /
-          (1000 * 60 * 60 * 24)
-        )
-      : 999;
+    const diffDays =
+      prev
+        ? Math.round(
+            (now - prev) /
+            (1000 * 60 * 60 * 24)
+          )
+        : 999;
 
     if (diffDays === 1) {
       d.streak =
@@ -225,6 +390,7 @@ function resetDailyIfNeeded() {
     }
 
     d.day = today;
+
     d.claimed = false;
 
     d.missions = [
@@ -262,17 +428,20 @@ function resetDailyIfNeeded() {
 // ---------------------------
 
 function updateDailyHint() {
-  const d = persistent.daily;
+  const d =
+    persistent.daily;
 
   if (!d?.missions?.length) {
     el.dailyHint.textContent =
       "Daily: —";
+
     return;
   }
 
-  const parts = d.missions.map(
-    m => `${m.cur}/${m.goal}`
-  );
+  const parts =
+    d.missions.map(
+      m => `${m.cur}/${m.goal}`
+    );
 
   el.dailyHint.textContent =
     `Daily (streak ${d.streak}): ${parts.join(" · ")}`;
@@ -286,7 +455,8 @@ function dailyProgress(
   type,
   amount = 1
 ) {
-  const d = persistent.daily;
+  const d =
+    persistent.daily;
 
   if (!d?.missions) {
     return;
@@ -303,11 +473,12 @@ function dailyProgress(
       continue;
     }
 
-    m.cur = clamp(
-      m.cur + amount,
-      0,
-      m.goal
-    );
+    m.cur =
+      clamp(
+        m.cur + amount,
+        0,
+        m.goal
+      );
 
     any = true;
 
@@ -363,10 +534,11 @@ function updateMissionProgress(dt) {
 
   mission.cur += dt;
 
-  mission.cur = Math.min(
-    mission.cur,
-    mission.goal
-  );
+  mission.cur =
+    Math.min(
+      mission.cur,
+      mission.goal
+    );
 
   updateMissionUI();
 
