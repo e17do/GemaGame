@@ -1119,6 +1119,18 @@ const finalSpeed =
         emp.t = emp.cd;
         run.empsUsed++;
 
+        if (mission.type === "emps") {
+  mission.cur++;
+
+  updateMissionUI();
+
+  if (mission.cur >= mission.goal) {
+    completeMission();
+  }
+}
+
+dailyProgress("emps", 1);
+
         camShake(18);
         slowmo(180, 0.28);
         freeze(60);
@@ -2044,9 +2056,14 @@ if (
               spawnEnemy();
 
               if (mission.type === "nohitPellets") {
-                mission.cur = 0;
-                updateMissionUI();
-              }
+  mission.cur++;
+
+  updateMissionUI();
+
+  if (mission.cur >= mission.goal) {
+    completeMission();
+  }
+}
 
               HAPTICS.pattern("hit");
 
@@ -3516,6 +3533,7 @@ initSkinShop(
         run.comboCount = 0;
         run.comboTimer = 0;
         run.comboMul = 1;
+        run.comboRecovery = false;
         run.doubleScore = 0;
         run.shield = 0;
         run.infiniteEMP = 0;
