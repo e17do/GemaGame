@@ -301,3 +301,44 @@ function updateMissionProgress(dt) {
     completeMission();
   }
 }
+
+// ========================================
+// GEMA PRIME
+// Mission Progress Hooks
+// ========================================
+
+function missionProgress(type, amount = 1) {
+  if (!persistent || !persistent.daily) return;
+
+  const missions = persistent.daily.missions || [];
+
+  let changed = false;
+
+  for (const mission of missions) {
+    if (!mission) continue;
+    if (mission.type !== type) continue;
+
+    const before = mission.progress || 0;
+
+    mission.progress = Math.min(
+      mission.target || 1,
+      before + amount
+    );
+
+    if (mission.progress !== before) {
+      changed = true;
+    }
+  }
+
+  if (!changed) return;
+
+  persistent.daily.missions = missions;
+
+  if (typeof STORE !== "undefined") {
+    STORE.set(
+      PKEY,
+      persistent,
+      SECRET
+    );
+  }
+}
