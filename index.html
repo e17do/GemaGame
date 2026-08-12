@@ -879,7 +879,7 @@ const finalSpeed =
   const maxHp =
     Math.max(
       1,
-      en.maxHp || en.hp || 1
+      bossMaxHpForWave(run.wave)
     );
 
   const hpRatio =
@@ -2054,47 +2054,113 @@ function updateEnemies(dt) {
     // BOSS
     // ---------------------------
 
-    if (en.type === "BOSS") {
-      if (
-        en.y < WORLD.h * 0.20
-      ) {
-        en.y += en.vy * dt * 0.06;
-      } else {
-        en.vx = lerp(
-          en.vx,
-          Math.sin(run.timeMs / 700) *
-            (1.2 + run.wave * 0.06),
-          0.03
-        );
+if (en.type === "BOSS") {
+  updateBossPhase(en);
 
-        en.x += en.vx;
+  if (
+    en.y < WORLD.h * 0.20
+  ) {
+    en.y += en.vy * dt * 0.06;
+  } else {
 
-        en.y +=
-          Math.sin(run.timeMs / 520) *
-          0.12;
+    // -------------------------
+    // Boss movement by phase
+    // -------------------------
 
-        en.shotCd =
-          (en.shotCd || 0) - dt;
+    const bossPhase =
+      en.bossPhase || 1;
 
-        if (en.shotCd <= 0) {
-          en.shotCd =
-            Math.max(
-              620,
-              1600 - run.wave * 80
-            );
+    const movementSpeed =
+      bossPhase === 3
+        ? 2.0
+        : bossPhase === 2
+          ? 1.55
+          : 1.2;
 
-          bossFire(en);
-        }
-      }
+    const movementWave =
+      bossPhase === 3
+        ? 1.25
+        : bossPhase === 2
+          ? 1.0
+          : 0.75;
 
-      en.x = clamp(
-        en.x,
-        en.r + 10,
-        WORLD.w - en.r - 10
+    en.vx = lerp(
+      en.vx,
+      Math.sin(
+        run.timeMs / (
+          700 / movementWave
+        )
+      ) *
+      (
+        movementSpeed +
+        run.wave * 0.06
+      ),
+      bossPhase === 3
+        ? 0.055
+        : bossPhase === 2
+          ? 0.045
+          : 0.03
+    );
+
+    en.x += en.vx;
+
+    en.y +=
+      Math.sin(
+        run.timeMs / (
+          520 / movementWave
+        )
+      ) *
+      (
+        bossPhase === 3
+          ? 0.20
+          : bossPhase === 2
+            ? 0.16
+            : 0.12
       );
 
-      continue;
+    // -------------------------
+    // Boss attack cadence
+    // -------------------------
+
+    en.shotCd =
+      (en.shotCd || 0) - dt;
+
+    if (en.shotCd <= 0) {
+
+      const baseCooldown =
+        bossPhase === 3
+          ? 520
+          : bossPhase === 2
+            ? 760
+            : 1600;
+
+      en.shotCd =
+        Math.max(
+          bossPhase === 3
+            ? 420
+            : bossPhase === 2
+              ? 600
+              : 620,
+          baseCooldown -
+          run.wave * (
+            bossPhase === 3
+              ? 35
+              : 55
+          )
+        );
+
+      bossFire(en);
     }
+  }
+
+  en.x = clamp(
+    en.x,
+    en.r + 10,
+    WORLD.w - en.r - 10
+  );
+
+  continue;
+}
 
     // ---------------------------
     // Base enemy speed
