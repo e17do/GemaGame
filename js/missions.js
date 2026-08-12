@@ -61,6 +61,20 @@ let mission = missionPool[0]();
 // ---------------------------
 
 function updateMissionUI() {
+  if (!mission) return;
+
+  if (mission.completed) {
+    el.msText.textContent =
+      `✓ ${mission.text} — COMPLETE`;
+
+    el.msA.textContent = mission.goal;
+    el.msB.textContent = mission.goal;
+
+    el.msFill.style.width = "100%";
+
+    return;
+  }
+
   el.msText.textContent = mission.text;
 
   el.msA.textContent =
@@ -74,7 +88,13 @@ function updateMissionUI() {
       : mission.goal;
 
   el.msFill.style.width =
-    (clamp(mission.cur / mission.goal, 0, 1) * 100).toFixed(1) + "%";
+    (
+      clamp(
+        mission.cur / mission.goal,
+        0,
+        1
+      ) * 100
+    ).toFixed(1) + "%";
 }
 
 // ---------------------------
@@ -84,12 +104,17 @@ function updateMissionUI() {
 function newMission() {
   mission =
     missionPool[
-      Math.floor(Math.random() * missionPool.length)
+      Math.floor(
+        Math.random() * missionPool.length
+      )
     ]();
 
   updateMissionUI();
 
-  toast("New mission: " + mission.text);
+  toast(
+    "New mission: " +
+    mission.text
+  );
 }
 
 // ---------------------------
@@ -97,6 +122,22 @@ function newMission() {
 // ---------------------------
 
 function completeMission() {
+  if (!mission) return;
+
+  if (mission.cur < mission.goal) {
+    return;
+  }
+
+  if (mission.completed) {
+    return;
+  }
+
+  mission.completed = true;
+
+  // ---------------------------
+  // Reward
+  // ---------------------------
+
   persistent.shards += mission.reward;
 
   STORE.set(
@@ -105,28 +146,39 @@ function completeMission() {
     SECRET
   );
 
+  updateMissionUI();
+
   toast(
-    `Mission complete +${mission.reward} shards`
+    `MISSION COMPLETE! +${mission.reward} SHARDS`
   );
 
-  sfx({
-    f: 980,
-    t: "triangle",
-    d: 0.18,
-    v: 0.08,
-    bend: -240
-  });
+  addFloating(
+    `+${mission.reward} SHARDS`,
+    player.x,
+    player.y - 48,
+    "#FFD056"
+  );
+
+  burst(
+    player.x,
+    player.y,
+    "#FFD056",
+    18,
+    0.7
+  );
+
+  camShake(2.5);
 
   sfx({
-    f: 1460,
-    t: "sine",
-    d: 0.16,
-    v: 0.06
+    f: 920,
+    t: "triangle",
+    d: 0.14,
+    v: 0.065,
+    bend: 180
   });
 
   HAPTICS.pattern("upgrade");
 
-  newMission();
   updateUI();
 }
 
@@ -166,7 +218,8 @@ function resetDailyIfNeeded() {
       : 999;
 
     if (diffDays === 1) {
-      d.streak = (d.streak || 0) + 1;
+      d.streak =
+        (d.streak || 0) + 1;
     } else {
       d.streak = 1;
     }
@@ -212,7 +265,8 @@ function updateDailyHint() {
   const d = persistent.daily;
 
   if (!d?.missions?.length) {
-    el.dailyHint.textContent = "Daily: —";
+    el.dailyHint.textContent =
+      "Daily: —";
     return;
   }
 
@@ -228,7 +282,10 @@ function updateDailyHint() {
 // Daily mission progress
 // ---------------------------
 
-function dailyProgress(type, amount = 1) {
+function dailyProgress(
+  type,
+  amount = 1
+) {
   const d = persistent.daily;
 
   if (!d?.missions) {
@@ -255,7 +312,8 @@ function dailyProgress(type, amount = 1) {
     any = true;
 
     if (m.cur >= m.goal) {
-      persistent.shards += m.reward;
+      persistent.shards +=
+        m.reward;
 
       toast(
         `${m.text} complete +${m.reward} shards (streak ${d.streak})`
@@ -281,6 +339,8 @@ function dailyProgress(type, amount = 1) {
     );
 
     updateDailyHint();
+
+    updateUI();
   }
 }
 
@@ -289,56 +349,28 @@ function dailyProgress(type, amount = 1) {
 // ---------------------------
 
 function updateMissionProgress(dt) {
+  if (!mission) {
+    return;
+  }
+
+  if (mission.completed) {
+    return;
+  }
+
   if (mission.type !== "time") {
     return;
   }
 
   mission.cur += dt;
 
+  mission.cur = Math.min(
+    mission.cur,
+    mission.goal
+  );
+
   updateMissionUI();
 
   if (mission.cur >= mission.goal) {
     completeMission();
-  }
-}
-
-// ========================================
-// GEMA PRIME
-// Mission Progress Hooks
-// ========================================
-
-function missionProgress(type, amount = 1) {
-  if (!persistent || !persistent.daily) return;
-
-  const missions = persistent.daily.missions || [];
-
-  let changed = false;
-
-  for (const mission of missions) {
-    if (!mission) continue;
-    if (mission.type !== type) continue;
-
-    const before = mission.progress || 0;
-
-    mission.progress = Math.min(
-      mission.target || 1,
-      before + amount
-    );
-
-    if (mission.progress !== before) {
-      changed = true;
-    }
-  }
-
-  if (!changed) return;
-
-  persistent.daily.missions = missions;
-
-  if (typeof STORE !== "undefined") {
-    STORE.set(
-      PKEY,
-      persistent,
-      SECRET
-    );
   }
 }
