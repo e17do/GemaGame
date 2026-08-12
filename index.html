@@ -641,7 +641,10 @@ const finalSpeed =
     player.hp / player.maxHp;
 
   const combo =
-    run.combo || 0;
+    run.comboCount || 0;
+
+  const wave =
+    run.wave || 1;
 
   const empReady =
     emp.ready;
@@ -649,60 +652,85 @@ const finalSpeed =
   const choices = [];
 
   // ---------------------------
-  // Shield
+  // COMMON
+  // SHIELD
   // ---------------------------
-  // Lebih mungkin muncul ketika HP rendah.
+
   if (hpRatio < 0.35) {
     choices.push(
       "shield",
       "shield",
+      "shield",
       "shield"
     );
-  } else if (hpRatio < 0.60) {
+  }
+
+  else if (hpRatio < 0.60) {
+    choices.push(
+      "shield",
+      "shield",
+      "shield"
+    );
+  }
+
+  else {
     choices.push(
       "shield",
       "shield"
     );
-  } else {
-    choices.push("shield");
   }
 
   // ---------------------------
-  // Infinite EMP
+  // RARE
+  // DOUBLE SCORE
   // ---------------------------
-  // Lebih berguna ketika EMP belum siap.
-  if (!empReady) {
-    choices.push(
-      "infiniteEMP",
-      "infiniteEMP",
-      "infiniteEMP"
-    );
-  } else {
-    choices.push(
-      "infiniteEMP"
-    );
-  }
 
-  // ---------------------------
-  // Double Score
-  // ---------------------------
-  // Lebih menarik ketika combo
-  // mulai terbentuk.
   if (combo >= 5) {
     choices.push(
       "doubleScore",
       "doubleScore",
       "doubleScore"
     );
-  } else if (combo >= 2) {
+  }
+
+  else if (combo >= 2) {
     choices.push(
       "doubleScore",
       "doubleScore"
     );
-  } else {
+  }
+
+  else {
     choices.push(
       "doubleScore"
     );
+  }
+
+  // ---------------------------
+  // EPIC
+  // INFINITE EMP
+  // ---------------------------
+
+  // Epic tidak boleh muncul terlalu
+  // awal. Mulai wave 4.
+  if (wave >= 4) {
+
+    // Kalau EMP sedang cooldown,
+    // peluang Epic meningkat.
+    if (!empReady) {
+      choices.push(
+        "infiniteEMP",
+        "infiniteEMP"
+      );
+    }
+
+    // Kalau EMP siap, Epic tetap
+    // mungkin muncul tetapi langka.
+    else {
+      choices.push(
+        "infiniteEMP"
+      );
+    }
   }
 
   const type =
@@ -720,6 +748,43 @@ const finalSpeed =
     type,
     t: 0
   });
+
+  // ---------------------------
+  // EPIC SPAWN FEEDBACK
+  // ---------------------------
+
+  if (type === "infiniteEMP") {
+    burst(
+      x,
+      y,
+      "#00F6FF",
+      18,
+      0.75
+    );
+
+    addFloating(
+      "✦ EPIC ✦",
+      x,
+      y - 24,
+      "#00F6FF"
+    );
+
+    sfx({
+      f: 1180,
+      t: "sine",
+      d: 0.12,
+      v: 0.045,
+      bend: 180
+    });
+
+    sfx({
+      f: 1480,
+      t: "triangle",
+      d: 0.18,
+      v: 0.035,
+      bend: 220
+    });
+  }
 }
 
       function bossWarning() {
