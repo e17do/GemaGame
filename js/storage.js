@@ -208,32 +208,3 @@ const persistent = normalizeSave(
     SECRET
   )
 );
-
-  {
-    shards: 0,
-    best: 0,
-
-    skins: {
-      unlocked: ["neo"],
-      equipped: "neo"
-    },
-
-    daily: {
-      day: "",
-      streak: 0,
-      missions: [],
-      claimed: false
-    },
-
-    up: {
-      speed: 4.0,
-      maxHp: 100,
-      empCd: 9500,
-      empRadius: 220,
-      magnet: 0
-    },
-
-    achievements: {}
-  },
-  SECRET
-);
