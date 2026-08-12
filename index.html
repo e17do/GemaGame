@@ -1437,19 +1437,302 @@ if (
             ctx.fillRect(x, y, w, h);
             ctx.fillStyle = "rgba(255,43,110,.85)";
             ctx.fillRect(x, y, w * hpPct, h);
-          } else {
-            const col = en.type === "WISP" ? "rgba(255,255,255,.95)" :
-                        en.type === "TANK" ? "rgba(255,208,86,.95)" :
-                        "rgba(255,43,110,.95)";
-            ctx.fillStyle = col;
-            ctx.shadowBlur = 16;
-            ctx.shadowColor = col;
-            ctx.beginPath();
-            ctx.arc(en.x, en.y, en.r, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.shadowBlur = 0;
-          }
-          ctx.globalAlpha = 1;
+            } else {
+
+  const pulse =
+    1 +
+    Math.sin(
+      performance.now() * 0.006 +
+      en.x * 0.01
+    ) * 0.05;
+
+  ctx.save();
+
+  ctx.translate(
+    en.x,
+    en.y
+  );
+
+  // ---------------------------
+  // STALKER
+  // ---------------------------
+  if (en.type === "STALKER") {
+
+    const r =
+      en.r * pulse;
+
+    ctx.rotate(
+      Math.atan2(
+        en.vy,
+        en.vx
+      )
+    );
+
+    ctx.shadowBlur = 18;
+    ctx.shadowColor =
+      "rgba(255,43,110,.65)";
+
+    ctx.fillStyle =
+      "rgba(255,43,110,.95)";
+
+    ctx.strokeStyle =
+      "rgba(255,120,160,.9)";
+
+    ctx.lineWidth = 2;
+
+    ctx.beginPath();
+
+    ctx.moveTo(r * 1.45, 0);
+    ctx.lineTo(-r * 0.85, -r * 0.85);
+    ctx.lineTo(-r * 0.35, 0);
+    ctx.lineTo(-r * 0.85, r * 0.85);
+    ctx.closePath();
+
+    ctx.fill();
+    ctx.stroke();
+
+  }
+
+  // ---------------------------
+  // WISP
+  // ---------------------------
+  else if (en.type === "WISP") {
+
+    const r =
+      en.r * pulse;
+
+    ctx.shadowBlur = 24;
+    ctx.shadowColor =
+      "rgba(0,246,255,.8)";
+
+    ctx.strokeStyle =
+      "rgba(0,246,255,.95)";
+
+    ctx.fillStyle =
+      "rgba(255,255,255,.92)";
+
+    ctx.lineWidth = 2;
+
+    ctx.beginPath();
+
+    ctx.moveTo(0, -r * 1.35);
+    ctx.lineTo(r * 0.9, 0);
+    ctx.lineTo(0, r * 1.35);
+    ctx.lineTo(-r * 0.9, 0);
+    ctx.closePath();
+
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.beginPath();
+
+    ctx.arc(
+      0,
+      0,
+      r * 0.42,
+      0,
+      Math.PI * 2
+    );
+
+    ctx.fillStyle =
+      "rgba(0,246,255,.95)";
+
+    ctx.fill();
+
+  }
+
+  // ---------------------------
+  // TANK
+  // ---------------------------
+  else if (en.type === "TANK") {
+
+    const r =
+      en.r * pulse;
+
+    ctx.rotate(
+      Math.PI / 4
+    );
+
+    ctx.shadowBlur = 20;
+    ctx.shadowColor =
+      "rgba(255,208,86,.65)";
+
+    ctx.fillStyle =
+      "rgba(255,208,86,.95)";
+
+    ctx.strokeStyle =
+      "rgba(255,244,180,.95)";
+
+    ctx.lineWidth = 2;
+
+    ctx.beginPath();
+
+    ctx.rect(
+      -r * 0.72,
+      -r * 0.72,
+      r * 1.44,
+      r * 1.44
+    );
+
+    ctx.fill();
+    ctx.stroke();
+
+    // Tank core
+    ctx.rotate(
+      -Math.PI / 4
+    );
+
+    ctx.fillStyle =
+      "rgba(55,40,0,.72)";
+
+    ctx.beginPath();
+
+    ctx.arc(
+      0,
+      0,
+      r * 0.38,
+      0,
+      Math.PI * 2
+    );
+
+    ctx.fill();
+
+    // HP indicator
+    const hpRatio =
+      clamp(
+        en.hp / 3,
+        0,
+        1
+      );
+
+    ctx.fillStyle =
+      "rgba(255,255,255,.18)";
+
+    ctx.fillRect(
+      -r,
+      -r - 7,
+      r * 2,
+      3
+    );
+
+    ctx.fillStyle =
+      "rgba(255,208,86,.95)";
+
+    ctx.fillRect(
+      -r,
+      -r - 7,
+      r * 2 * hpRatio,
+      3
+    );
+
+  }
+
+  // ---------------------------
+  // SNIPE
+  // ---------------------------
+  else if (en.type === "SNIPE") {
+
+    const r =
+      en.r * pulse;
+
+    ctx.rotate(
+      Math.atan2(
+        en.vy,
+        en.vx
+      )
+    );
+
+    ctx.shadowBlur = 22;
+    ctx.shadowColor =
+      "rgba(255,80,120,.8)";
+
+    ctx.fillStyle =
+      "rgba(255,70,110,.95)";
+
+    ctx.strokeStyle =
+      "rgba(255,220,230,.95)";
+
+    ctx.lineWidth = 2;
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+      r * 1.6,
+      0
+    );
+
+    ctx.lineTo(
+      -r * 0.75,
+      -r * 0.72
+    );
+
+    ctx.lineTo(
+      -r * 0.35,
+      0
+    );
+
+    ctx.lineTo(
+      -r * 0.75,
+      r * 0.72
+    );
+
+    ctx.closePath();
+
+    ctx.fill();
+    ctx.stroke();
+
+    // Aim line
+    ctx.strokeStyle =
+      "rgba(255,43,110,.35)";
+
+    ctx.lineWidth = 1;
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+      r * 0.8,
+      0
+    );
+
+    ctx.lineTo(
+      r * 3.4,
+      0
+    );
+
+    ctx.stroke();
+
+  }
+
+  // ---------------------------
+  // Fallback
+  // ---------------------------
+  else {
+
+    const r =
+      en.r * pulse;
+
+    ctx.shadowBlur = 18;
+    ctx.shadowColor =
+      "rgba(255,43,110,.65)";
+
+    ctx.fillStyle =
+      "rgba(255,43,110,.95)";
+
+    ctx.beginPath();
+
+    ctx.arc(
+      0,
+      0,
+      r,
+      0,
+      Math.PI * 2
+    );
+
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
         }
 
         for (const s of bossShots) {
