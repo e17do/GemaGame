@@ -1692,7 +1692,8 @@ if (run.comboRecovery) {
     el.uiCombo.textContent = "1x";
     el.uiCombo.style.transform = "scale(1)";
   }
-}
+  }
+  }
 
   // ---------------------------
   // Combo danger feedback
@@ -1702,7 +1703,7 @@ if (run.comboRecovery) {
     el.uiCombo &&
     run.comboCount >= 2 &&
     run.comboTimer > 0
-  ) {
+  ) 
     const maxTime =
       run.comboCount >= 10
         ? 3200
